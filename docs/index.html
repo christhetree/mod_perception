@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en" class="h-100">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+<!--    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0VHJP81PQT"></script>-->
+<!--    <script>-->
+<!--        window.dataLayer = window.dataLayer || [];-->
+<!--        function gtag(){dataLayer.push(arguments);}-->
+<!--        gtag('js', new Date());-->
+
+<!--        gtag('config', 'G-0VHJP81PQT');-->
+<!--    </script>-->
+    
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Christopher Mitcheltree">
+    <title>SCRAPL: Scattering Transform with Random Paths for Machine Learning</title>
+
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+          integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <meta name="theme-color" content="#563d7c">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+</head>
+
+<body>
+<!-- Page Content -->
+<div class="text-center">
+    <div class="row">
+        <div class="col-lg-12">
+            <br>
+            <h1 class="mt-5 mb-3">Human Perception of Modulation in Wavetable Synthesizer Sounds</h1>
+            <p class="lead">
+                <a href="https://www.linkedin.com/in/sachin-subramanian-642742212/" target=”_blank”>Sachin Subramanian</a>,
+                <a href="https://iranroman.github.io/" target=”_blank”>Iran R. Roman</a>,
+                <a href="https://www.qmul.ac.uk/eecs/people/profiles/pauwelsjohan.html" target=”_blank”>Johan Pauwels</a>,
+                <a href="https://joshreiss.github.io/" target=”_blank”>Joshua D. Reiss</a>,
+                <a href="https://christhetr.ee/" target=”_blank”>Christopher Mitcheltree</a>
+            </p>
+
+            <p class="lead">Centre for Digital Music, Queen Mary University of London, UK</p>
+
+            <div>
+                <a class="btn btn-outline-dark" href="docs/subramanian2026human.pdf" target=”_blank” type="button">
+                    <i class="bi bi-file-richtext"></i> Paper
+                </a>
+                <a class="btn btn-outline-dark" href="https://github.com/christhetree/mod_perception" target=”_blank” type="button">
+                    <i class="bi bi-code-slash"></i> Code
+                </a>
+<!--                <a class="btn btn-outline-dark" href="https://docs.google.com/presentation/d/1mD4Fn_YGiU_bLcHtiPfMSPvQ0ztj-tRVm4hF3Kc78ZM/edit?usp=sharing" target=”_blank” type="button">-->
+<!--                    <i class="bi bi-file-earmark-slides"></i> Slides-->
+<!--                </a>-->
+<!--                <a class="btn btn-outline-dark" href="docs/mitcheltree2026scrapl_poster.pdf" target=”_blank” type="button">-->
+<!--                    <i class="bi bi-easel"></i> Poster-->
+<!--                </a>-->
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="section mt-5 mb-5">
+        <div class="abstract">
+            <h2>Abstract</h2>
+            <hr>
+            <p>
+                Modulation is central to sound synthesis, yet its perceptual salience remains poorly characterized.
+                We investigate how amplitude, frequency, and irregularity of a modulation signal driving wavetable-position scanning affect perceived timbral change.
+                In a MUSHRA-style listening test, participants rated perceived difference between a minimally modulated reference and four increasingly modulated versions, across a wide array of timbres.
+                Perceived difference increased linearly with modulation amount for all three modulation types.
+                A repeated-measures ANOVA confirmed significant main effects of modulation type and amount, and their interaction, with frequency modulation producing the largest perceptual changes, followed by amplitude, and irregularity the smallest; an ordering that held consistently at both low and high modulation amounts.
+                Our results provide quantitative evidence for perceptually informed modulation design, and a reproducible framework for studying time-varying synthesizer timbre.            </p>
+            <br>
+            <img class="img-fluid w-100 mx-auto d-block" src="figs/visual_abstract.svg">
+            <p class="text-center">Figure 1: <em>A modulation signal can vary in amplitude, frequency, and irregularity to scan through a wavetable that spans a range of timbre qualities. The resulting audio was rated by listeners for perceived difference from a minimally modulated reference. We hypothesized that perceived difference correlates with modulation amount across all three properties, independent of timbre.</em></p>
+        </div>
+    </div>
+
+<!--    <div class="section">-->
+<!--        <h2>Citation</h2>-->
+<!--        <hr>-->
+<!--        <p>Accepted to the International Conference on Learning Representations (ICLR), Rio de Janeiro, Brazil, 23 - 27 April 2026.</p>-->
+<!--        <div style="background-color: #e9ecef;">-->
+<!--  <pre><code>-->
+<!--  @inproceedings{mitcheltree2026scrapl,-->
+<!--      title={{SCRAPL}: Scattering Transform with Random Paths for Machine Learning},-->
+<!--      author={Christopher Mitcheltree and Vincent Lostanlen and Emmanouil Benetos and Mathieu Lagrange},-->
+<!--      booktitle={Proceedings of the International Conference on Learning Representations (ICLR)},-->
+<!--      year={2026}-->
+<!--  }-->
+<!--  </code></pre>-->
+<!--        </div>-->
+<!--    </div>-->
+
+    <div class="section">
+        <h2 class="">Stimuli Generation</h2>
+        <hr>
+        <div class="section mb-5">
+            <p>
+                Details coming soon.
+            </p>
+        </div>
+
+        <p style="text-align: center;">
+            Table 1: <em>Listening test stimuli for the amplitude modulation type. Each row is one wavetable, scanned for four seconds by a sinusoidal (1.0 Hz) modulation signal whose amplitude increases from the minimally modulated reference (0.1) to the largest modulation amount (0.9).</em>
+        </p>
+        <div id="amp-table" class="table-wrapper-3" data-n="6">
+            <table class="table table-sm text-center" style="vertical-align: middle;">
+                <colgroup>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                </colgroup>
+                <tr>
+                    <th>Timbre<br>Quality</th>
+                    <th>Source</th>
+                    <th class="audio-col">Reference<br>(0.1)</th>
+                    <th class="audio-col">Amount 1<br>(0.3)</th>
+                    <th class="audio-col">Amount 2<br>(0.5)</th>
+                    <th class="audio-col">Amount 3<br>(0.7)</th>
+                    <th class="audio-col">Amount 4<br>(0.9)</th>
+                </tr>
+                <tr>
+                    <td>Brightness</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Brightness</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Richness</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Richness</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+            </table>
+            <div class="text-center">
+                <p style="margin-bottom: 3.0rem;">Table scrolls horizontally if space is limited.</p>
+            </div>
+        </div>
+
+        <p style="text-align: center;">
+            Table 2: <em>Listening test stimuli for the frequency modulation type. Each row is one wavetable, scanned for four seconds by a full amplitude (1.0) sinusoidal modulation signal whose frequency increases from the minimally modulated reference (0.25&nbsp;Hz) to the largest modulation amount (4.0&nbsp;Hz).</em>
+        </p>
+        <div id="freq-table" class="table-wrapper-3" data-n="6">
+            <table class="table table-sm text-center" style="vertical-align: middle;">
+                <colgroup>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                </colgroup>
+                <tr>
+                    <th>Timbre<br>Quality</th>
+                    <th>Source</th>
+                    <th class="audio-col">Reference<br>(0.25 Hz)</th>
+                    <th class="audio-col">Amount 1<br>(0.50 Hz)</th>
+                    <th class="audio-col">Amount 2<br>(1.0 Hz)</th>
+                    <th class="audio-col">Amount 3<br>(2.0 Hz)</th>
+                    <th class="audio-col">Amount 4<br>(4.0 Hz)</th>
+                </tr>
+                <tr>
+                    <td>Brightness</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__freq_0.25hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__freq_0.50hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__freq_1.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__freq_2.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__freq_4.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Brightness</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__freq_0.25hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__freq_0.50hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__freq_1.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__freq_2.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__freq_4.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Richness</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__freq_0.25hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__freq_0.50hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__freq_1.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__freq_2.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__freq_4.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Richness</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__freq_0.25hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__freq_0.50hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__freq_1.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__freq_2.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__freq_4.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_0.25hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_0.50hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_1.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_2.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_4.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_0.25hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_0.50hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_1.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_2.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_4.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+            </table>
+            <div class="text-center">
+                <p style="margin-bottom: 3.0rem;">Table scrolls horizontally if space is limited.</p>
+            </div>
+        </div>
+
+        <p style="text-align: center;">
+            Table 3: <em>Listening test stimuli for the irregularity modulation type. Each row is one wavetable, scanned for four seconds by a full amplitude (1.0) sinusoidal modulation signal with four peaks and troughs whose irregularity increases from the minimally modulated reference (0% i.e. periodic) to the largest modulation amount (50%).</em>
+        </p>
+        <div id="reg-table" class="table-wrapper-3" data-n="6">
+            <table class="table table-sm text-center" style="vertical-align: middle;">
+                <colgroup>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                </colgroup>
+                <tr>
+                    <th>Timbre<br>Quality</th>
+                    <th>Source</th>
+                    <th class="audio-col">Reference<br>(0.0%)</th>
+                    <th class="audio-col">Amount 1<br>(12.5%)</th>
+                    <th class="audio-col">Amount 2<br>(25.0%)</th>
+                    <th class="audio-col">Amount 3<br>(37.5%)</th>
+                    <th class="audio-col">Amount 4<br>(50.0%)</th>
+                </tr>
+                <tr>
+                    <td>Brightness</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_synthetic__256_1024__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Brightness</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/brightness_real__harmonics__synced_sines__256_1024__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Richness</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_synthetic__256_1024__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Richness</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/richness_real__filter__acid_saw__46_1024__inverted__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+            </table>
+            <div class="text-center">
+                <p style="margin-bottom: 3.0rem;">Table scrolls horizontally if space is limited.</p>
+            </div>
+        </div>
+
+    <hr>
+    <footer>
+        <p>
+            Send feedback and questions to <a href="https://christhetr.ee" target=”_blank”>Christopher Mitcheltree</a>.
+            <br>Scroll to <a href="#">top</a>.
+        </p>
+        <p><br></p>
+    </footer>
+</div>
+
+<!-- Bootstrap core JavaScript -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+        integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
+        integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
