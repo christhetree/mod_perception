@@ -91,3 +91,32 @@
 .btn {
     border-radius: 20px;
 }
+
+/* Table 1: shrink to content and center on the page; left align text columns in all tables */
+#wavetable-table {
+    overflow-x: auto;
+}
+
+#wavetable-table .table {
+    display: table;
+    width: auto;
+    margin: 0 auto;
+    overflow-x: visible;
+}
+
+#wavetable-table td:first-child,
+#amp-table td:nth-child(-n + 2),
+#freq-table td:nth-child(-n + 2),
+#reg-table td:nth-child(-n + 2) {
+    text-align: left;
+}
+
+#wavetable-table td:not(:first-child) {
+    text-align: right;
+}
+
+#wavetable-table th,
+#wavetable-table td {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}

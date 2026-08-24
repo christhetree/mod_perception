@@ -16,7 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="Christopher Mitcheltree">
-    <title>SCRAPL: Scattering Transform with Random Paths for Machine Learning</title>
+    <title>Human Perception of Modulation in Wavetable Synthesizer Sounds</title>
 
     <!-- Bootstrap core CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
@@ -100,12 +100,142 @@
         <hr>
         <div class="section mb-5">
             <p>
-                Details coming soon.
+                TBD.
+<!--                Every stimulus is a four-second, 44.1 kHz sweep through a single wavetable. The oscillator reads one 1024-sample frame per cycle, giving a fixed carrier of about 43 Hz, while a modulation signal — an audio-rate control signal in the range [0, 1] — determines-->
+<!--                which frame of the wavetable is read at each sample; positions falling between frames are linearly interpolated, so the timbre glides continuously instead of stepping. Because a wavetable's timbre rarely changes evenly from one end to the other, the-->
+<!--                modulation signal is first passed through a per-wavetable lookup table that linearizes the timbral dimension of interest (brightness, richness, or warmth): the measured feature curve is made monotonic using isotonic regression and then inverted, so that-->
+<!--                equal changes in the modulation signal produce equal changes in the target feature. Three families of modulation signal are used, each a raised cosine with one property varied across five levels: rate, spanning the full wavetable at 0.25, 0.5, 1, 2, and 4-->
+<!--                Hz; depth, a fixed 1 Hz oscillation centred on the middle of the wavetable with a peak-to-peak excursion of 0.1 to 0.9 of its full range; and irregularity, a 1 Hz oscillation whose individual cycles are alternately stretched and compressed by 0% to 50% in a-->
+<!--                fixed random order, leaving the total duration — and therefore the average rate — unchanged. Within each family the smallest amount serves as the reference against which the other four are compared. Each rendered sweep is finally loudness-normalized to −18-->
+<!--                LUFS (ITU-R BS.1770), given a 256-sample linear fade in and out to avoid clicks, and written as a 44.1 kHz stereo WAV file with the mono signal duplicated across both channels.-->
             </p>
         </div>
 
         <p style="text-align: center;">
-            Table 1: <em>Listening test stimuli for the amplitude modulation type. Each row is one wavetable, scanned for four seconds by a sinusoidal (1.0 Hz) modulation signal whose amplitude increases from the minimally modulated reference (0.1) to the largest modulation amount (0.9).</em>
+            Table 1: <em>Minimum and maximum values of the three timbral features across all frames of the six wavetables used in the listening test. Each row is one wavetable, named after the timbral dimension it varies and its source (synthetic or real). Values are measured before the per-wavetable linearizing lookup table is applied.</em>
+        </p>
+        <div id="wavetable-table" class="table-wrapper-3" data-n="6">
+            <table class="table table-sm text-center" style="vertical-align: middle;">
+                <colgroup>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                </colgroup>
+                <tr>
+                    <th rowspan="2" style="vertical-align: middle;">Wavetable</th>
+                    <th colspan="2">Warmth</th>
+                    <th colspan="2">Brightness</th>
+                    <th colspan="2">Richness</th>
+                </tr>
+                <tr>
+                    <th>min</th>
+                    <th>max</th>
+                    <th>min</th>
+                    <th>max</th>
+                    <th>min</th>
+                    <th>max</th>
+                </tr>
+                <tr>
+                    <td>Warmth (Synthetic)</td>
+                    <td>0.001</td>
+                    <td>0.999</td>
+                    <td>12.299</td>
+                    <td>12.345</td>
+                    <td>0.663</td>
+                    <td>0.664</td>
+                </tr>
+                <tr>
+                    <td>Warmth (Real)</td>
+                    <td>0.000</td>
+                    <td>1.000</td>
+                    <td>11.726</td>
+                    <td>12.575</td>
+                    <td>0.527</td>
+                    <td>0.576</td>
+                </tr>
+                <tr>
+                    <td>Brightness (Synthetic)</td>
+                    <td>0.500</td>
+                    <td>0.500</td>
+                    <td>6.146</td>
+                    <td>9.442</td>
+                    <td>0.201</td>
+                    <td>0.264</td>
+                </tr>
+                <tr>
+                    <td>Brightness (Real)</td>
+                    <td>0.388</td>
+                    <td>0.709</td>
+                    <td>6.097</td>
+                    <td>9.424</td>
+                    <td>0.131</td>
+                    <td>0.163</td>
+                </tr>
+                <tr>
+                    <td>Richness (Synthetic)</td>
+                    <td>0.500</td>
+                    <td>0.500</td>
+                    <td>8.611</td>
+                    <td>9.353</td>
+                    <td>0.169</td>
+                    <td>0.413</td>
+                </tr>
+                <tr>
+                    <td>Richness (Real)</td>
+                    <td>0.484</td>
+                    <td>0.505</td>
+                    <td>5.681</td>
+                    <td>6.423</td>
+                    <td>0.152</td>
+                    <td>0.396</td>
+                </tr>
+            </table>
+            <div class="text-center">
+                <p style="margin-top: 0.75rem; margin-bottom: 3.0rem;">Table scrolls horizontally if space is limited.</p>
+            </div>
+        </div>
+
+        <img class="img-fluid w-75 mx-auto d-block" src="figs/wavetable_timbre_qualities.png">
+        <p class="text-center" style="margin-bottom: 3.0rem;">Figure 2:
+            <em>
+                TBD.
+<!--                The six wavetables used in the listening test, one per row: a synthetic and a real wavetable for each of the three timbral dimensions (warmth, brightness, and richness). The first column shows the wavetable itself, with the frame index along the horizontal axis, the phase within each frame along the vertical axis, and sample amplitude on a diverging colour scale symmetric about zero (blue negative, red positive). The remaining three columns show the timbral feature curves measured for every frame of that wavetable. Warmth is the fraction of harmonic power falling in the odd harmonics, excluding DC, and is therefore dimensionless on a 0 to 1 scale. Brightness is the spectral centroid of the log-compressed magnitude spectrum, mapped onto the perceptual centroid scale of Kazazis et al.; its units are dimensionless, with a value of 10 corresponding to a centroid of 1 kHz and the range plotted here, roughly 6 to 12.5, spanning centroids of about 150 Hz to 4.7 kHz. Richness is the spectral spread expressed as a fraction of the Nyquist frequency and then log-compressed, again dimensionless on a 0 to 1 scale. All four panels in a row share the same horizontal axis, the normalised position within the wavetable, and each column shares a vertical scale across all six rows so that the wavetables can be compared directly. Importantly, the curves are shown exactly as measured, before the per-wavetable lookup table is applied: that lookup table warps the modulation signal at render time so that the target feature of each wavetable progresses linearly, and its effect is therefore not visible here. The synthetic wavetables were constructed so that their target feature increases smoothly and monotonically while the other two remain essentially constant; the real wavetables, taken from an existing wavetable collection, approximate this behaviour but control the remaining features less well &mdash; most visibly in the warmth of the real brightness wavetable, which ripples between roughly 0.4 and 0.7.-->
+            </em>
+        </p>
+
+        <img class="img-fluid w-100 mx-auto d-block" src="figs/mod_sigs__amp.png">
+        <p class="text-center" style="margin-bottom: 3.0rem;">Figure 3:
+            <em>
+                TBD.
+<!--                The five amplitude modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a 1.0 Hz raised cosine centred on the middle of the wavetable whose peak-to-peak excursion grows from 0.1 in the minimally modulated reference to 0.9 in the largest modulation amount. These are the modulation signals behind the stimuli in Table 2.-->
+            </em>
+        </p>
+
+        <img class="img-fluid w-100 mx-auto d-block" src="figs/mod_sigs__freq.png">
+        <p class="text-center" style="margin-bottom: 3.0rem;">Figure 4:
+            <em>
+                TBD.
+<!--                The five frequency modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a full amplitude (1.0) raised cosine spanning the entire wavetable, with its rate increasing from 0.25&nbsp;Hz in the minimally modulated reference &mdash; a single sweep up and back across the four seconds &mdash; to 4.0&nbsp;Hz in the largest modulation amount. These are the modulation signals behind the stimuli in Table 3.-->
+            </em>
+        </p>
+
+        <img class="img-fluid w-100 mx-auto d-block" src="figs/mod_sigs__reg.png">
+        <p class="text-center" style="margin-bottom: 3.0rem;">Figure 5:
+            <em>
+                TBD.
+<!--                The five irregularity modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a full amplitude (1.0) raised cosine with four peaks and troughs, whose individual cycles are alternately stretched and compressed in a fixed random order by 0% in the periodic reference up to 50% in the largest modulation amount; the total duration, and therefore the average rate of 1&nbsp;Hz, is unchanged. These are the modulation signals behind the stimuli in Table 4.-->
+            </em>
+        </p>
+
+        <h2 class="">Stimuli Listening Samples</h2>
+        <hr>
+
+        <p style="text-align: center;">
+            Table 2: <em>Listening test stimuli for the amplitude modulation type. Each row is one wavetable, scanned for four seconds by a sinusoidal (1.0 Hz) modulation signal whose amplitude increases from the minimally modulated reference (0.1) to the largest modulation amount (0.9).</em>
         </p>
         <div id="amp-table" class="table-wrapper-3" data-n="6">
             <table class="table table-sm text-center" style="vertical-align: middle;">
@@ -338,7 +468,7 @@
         </div>
 
         <p style="text-align: center;">
-            Table 2: <em>Listening test stimuli for the frequency modulation type. Each row is one wavetable, scanned for four seconds by a full amplitude (1.0) sinusoidal modulation signal whose frequency increases from the minimally modulated reference (0.25&nbsp;Hz) to the largest modulation amount (4.0&nbsp;Hz).</em>
+            Table 3: <em>Listening test stimuli for the frequency modulation type. Each row is one wavetable, scanned for four seconds by a full amplitude (1.0) sinusoidal modulation signal whose frequency increases from the minimally modulated reference (0.25&nbsp;Hz) to the largest modulation amount (4.0&nbsp;Hz).</em>
         </p>
         <div id="freq-table" class="table-wrapper-3" data-n="6">
             <table class="table table-sm text-center" style="vertical-align: middle;">
@@ -571,7 +701,7 @@
         </div>
 
         <p style="text-align: center;">
-            Table 3: <em>Listening test stimuli for the irregularity modulation type. Each row is one wavetable, scanned for four seconds by a full amplitude (1.0) sinusoidal modulation signal with four peaks and troughs whose irregularity increases from the minimally modulated reference (0% i.e. periodic) to the largest modulation amount (50%).</em>
+            Table 4: <em>Listening test stimuli for the irregularity modulation type. Each row is one wavetable, scanned for four seconds by a full amplitude (1.0) sinusoidal modulation signal with four peaks and troughs whose irregularity increases from the minimally modulated reference (0% i.e. periodic) to the largest modulation amount (50%).</em>
         </p>
         <div id="reg-table" class="table-wrapper-3" data-n="6">
             <table class="table table-sm text-center" style="vertical-align: middle;">
