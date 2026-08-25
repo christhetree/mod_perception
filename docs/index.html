@@ -74,7 +74,7 @@
                 A repeated-measures ANOVA confirmed significant main effects of modulation type and amount, and their interaction, with frequency modulation producing the largest perceptual changes, followed by amplitude, and irregularity the smallest; an ordering that held consistently at both low and high modulation amounts.
                 Our results provide quantitative evidence for perceptually informed modulation design, and a reproducible framework for studying time-varying synthesizer timbre.            </p>
             <br>
-            <img class="img-fluid w-100 mx-auto d-block" src="figs/visual_abstract.svg">
+            <img id="fig-visual-abstract" class="img-fluid w-100 mx-auto d-block" src="figs/visual_abstract.svg">
             <p class="text-center">Figure 1: <em>A modulation signal can vary in amplitude, frequency, and irregularity to scan through a wavetable that spans a range of timbre qualities. The resulting audio was rated by listeners for perceived difference from a minimally modulated reference. We hypothesized that perceived difference correlates with modulation amount across all three properties, independent of timbre.</em></p>
         </div>
     </div>
@@ -100,19 +100,26 @@
         <hr>
         <div class="section mb-5">
             <p>
-                TBD.
-<!--                Every stimulus is a four-second, 44.1 kHz sweep through a single wavetable. The oscillator reads one 1024-sample frame per cycle, giving a fixed carrier of about 43 Hz, while a modulation signal — an audio-rate control signal in the range [0, 1] — determines-->
-<!--                which frame of the wavetable is read at each sample; positions falling between frames are linearly interpolated, so the timbre glides continuously instead of stepping. Because a wavetable's timbre rarely changes evenly from one end to the other, the-->
-<!--                modulation signal is first passed through a per-wavetable lookup table that linearizes the timbral dimension of interest (brightness, richness, or warmth): the measured feature curve is made monotonic using isotonic regression and then inverted, so that-->
-<!--                equal changes in the modulation signal produce equal changes in the target feature. Three families of modulation signal are used, each a raised cosine with one property varied across five levels: rate, spanning the full wavetable at 0.25, 0.5, 1, 2, and 4-->
-<!--                Hz; depth, a fixed 1 Hz oscillation centred on the middle of the wavetable with a peak-to-peak excursion of 0.1 to 0.9 of its full range; and irregularity, a 1 Hz oscillation whose individual cycles are alternately stretched and compressed by 0% to 50% in a-->
-<!--                fixed random order, leaving the total duration — and therefore the average rate — unchanged. Within each family the smallest amount serves as the reference against which the other four are compared. Each rendered sweep is finally loudness-normalized to −18-->
-<!--                LUFS (ITU-R BS.1770), given a 256-sample linear fade in and out to avoid clicks, and written as a 44.1 kHz stereo WAV file with the mono signal duplicated across both channels.-->
+                There are 90 audio stimuli in total for our listening test (6 wavetables × 3 modulation signal types × 5 modulation amounts).
+                Every stimulus is generated using a four-second long modulation signal that scans a wavetable across multiple positions, resulting in a time-varying change in timbre while loudness and pitch remain relatively constant.
+                This type of modulation is common in wavetable synthesizers and is often referred to as wavetable scanning, spectral warping, or wavetable position modulation.
+                Wavetables were chosen to vary significantly across warmth, brightness, or richness timbre qualities, while remaining relatively constant across the other two.
+                The selected wavetables consist of 46, 166, or 256 different positions (also known as frames or cycles), each with a length of 1024 samples, giving them an approximate fundamental frequency of 43 Hz when read at a sample rate of 44.1 kHz.
+                The modulation signal (an audio-rate control signal in the range [0, 1]) determines which frame of the wavetable is read at each time sample; positions falling between frames are linearly interpolated, so the timbre glides continuously instead of stepping.
+                We investigate three characteristics of modulation signals: amplitude, frequency, and irregularity (also known as aperiodicity).
+                <a href="#fig-wavetables">Figure 2</a> shows the six wavetables and their three measured timbre qualities across each wavetable's positions and <a href="#fig-mod-sigs-amp">Figures 3</a>, <a href="#fig-mod-sigs-freq">4</a>, and <a href="#fig-mod-sigs-reg">5</a> show the three modulation signal types and their corresponding modulation amounts.
+            </p>
+            <p>
+                Since a wavetable's timbre rarely changes completely linearly from one end to the other (see <a href="#fig-wavetables">Figure 2</a>), the modulation signal is first passed through a per-wavetable lookup table that linearizes the timbral dimension of interest (brightness, richness, or warmth): the measured feature curve is made monotonic using isotonic regression and then inverted, so that equal changes in the modulation signal produce equal changes in the target feature.
+                Each modulation signal is a sinusoid in the range [0, 1] with one property varied across five levels: amplitude (<a href="#fig-mod-sigs-amp">Figure 3</a>), a fixed 1 Hz oscillation centred on the middle of the wavetable with a peak-to-peak excursion of 0.1 to 0.9 of its full range; frequency (<a href="#fig-mod-sigs-freq">Figure 4</a>), spanning the full wavetable at 0.25, 0.5, 1, 2, and 4 Hz; and irregularity (<a href="#fig-mod-sigs-reg">Figure 5</a>), a 1 Hz oscillation whose individual cycles are stretched or compressed by 0%, 12.5%, 25%, 37.5%, or 50% in a fixed random order, leaving the total duration, and therefore the average rate, unchanged.
+                For each modulation signal type the smallest amount serves as the reference against which the other four are compared.
+                Each rendered audio sample is finally loudness-normalized to −18 LUFS (ITU-R BS.1770), given a 256-sample linear fade in and out to avoid clicks, and written as a 44.1 kHz stereo WAV file with the mono signal duplicated across both channels.
+                All 90 audio stimuli can be listened to below, grouped by modulation signal type: amplitude (<a href="#table-amp">Table 2</a>), frequency (<a href="#table-freq">Table 3</a>), and irregularity (<a href="#table-reg">Table 4</a>).
             </p>
         </div>
 
-        <p style="text-align: center;">
-            Table 1: <em>Minimum and maximum values of the three timbral features across all frames of the six wavetables used in the listening test. Each row is one wavetable, named after the timbral dimension it varies and its source (synthetic or real). Values are measured before the per-wavetable linearizing lookup table is applied.</em>
+        <p id="table-feature-ranges" style="text-align: center;">
+            Table 1: <em>The number of positions and the minimum and maximum values of the three timbre qualities across all positions of the six wavetables used in the listening test. Each row is one wavetable, named after the timbre quality it varies and its source (synthetic or real).</em>
         </p>
         <div id="wavetable-table" class="table-wrapper-3" data-n="6">
             <table class="table table-sm text-center" style="vertical-align: middle;">
@@ -124,9 +131,11 @@
                     <col>
                     <col>
                     <col>
+                    <col>
                 </colgroup>
                 <tr>
                     <th rowspan="2" style="vertical-align: middle;">Wavetable</th>
+                    <th rowspan="2" style="vertical-align: middle;">No. of<br>Positions</th>
                     <th colspan="2">Warmth</th>
                     <th colspan="2">Brightness</th>
                     <th colspan="2">Richness</th>
@@ -141,6 +150,7 @@
                 </tr>
                 <tr>
                     <td>Warmth (Synthetic)</td>
+                    <td>256</td>
                     <td>0.001</td>
                     <td>0.999</td>
                     <td>12.299</td>
@@ -150,6 +160,7 @@
                 </tr>
                 <tr>
                     <td>Warmth (Real)</td>
+                    <td>166</td>
                     <td>0.000</td>
                     <td>1.000</td>
                     <td>11.726</td>
@@ -159,6 +170,7 @@
                 </tr>
                 <tr>
                     <td>Brightness (Synthetic)</td>
+                    <td>256</td>
                     <td>0.500</td>
                     <td>0.500</td>
                     <td>6.146</td>
@@ -168,6 +180,7 @@
                 </tr>
                 <tr>
                     <td>Brightness (Real)</td>
+                    <td>256</td>
                     <td>0.388</td>
                     <td>0.709</td>
                     <td>6.097</td>
@@ -177,6 +190,7 @@
                 </tr>
                 <tr>
                     <td>Richness (Synthetic)</td>
+                    <td>256</td>
                     <td>0.500</td>
                     <td>0.500</td>
                     <td>8.611</td>
@@ -186,6 +200,7 @@
                 </tr>
                 <tr>
                     <td>Richness (Real)</td>
+                    <td>46</td>
                     <td>0.484</td>
                     <td>0.505</td>
                     <td>5.681</td>
@@ -199,42 +214,43 @@
             </div>
         </div>
 
-        <img class="img-fluid w-75 mx-auto d-block" src="figs/wavetable_timbre_qualities.png">
+        <img id="fig-wavetables" class="img-fluid w-75 mx-auto d-block" src="figs/wavetable_timbre_qualities.png">
         <p class="text-center" style="margin-bottom: 3.0rem;">Figure 2:
             <em>
-                TBD.
-<!--                The six wavetables used in the listening test, one per row: a synthetic and a real wavetable for each of the three timbral dimensions (warmth, brightness, and richness). The first column shows the wavetable itself, with the frame index along the horizontal axis, the phase within each frame along the vertical axis, and sample amplitude on a diverging colour scale symmetric about zero (blue negative, red positive). The remaining three columns show the timbral feature curves measured for every frame of that wavetable. Warmth is the fraction of harmonic power falling in the odd harmonics, excluding DC, and is therefore dimensionless on a 0 to 1 scale. Brightness is the spectral centroid of the log-compressed magnitude spectrum, mapped onto the perceptual centroid scale of Kazazis et al.; its units are dimensionless, with a value of 10 corresponding to a centroid of 1 kHz and the range plotted here, roughly 6 to 12.5, spanning centroids of about 150 Hz to 4.7 kHz. Richness is the spectral spread expressed as a fraction of the Nyquist frequency and then log-compressed, again dimensionless on a 0 to 1 scale. All four panels in a row share the same horizontal axis, the normalised position within the wavetable, and each column shares a vertical scale across all six rows so that the wavetables can be compared directly. Importantly, the curves are shown exactly as measured, before the per-wavetable lookup table is applied: that lookup table warps the modulation signal at render time so that the target feature of each wavetable progresses linearly, and its effect is therefore not visible here. The synthetic wavetables were constructed so that their target feature increases smoothly and monotonically while the other two remain essentially constant; the real wavetables, taken from an existing wavetable collection, approximate this behaviour but control the remaining features less well &mdash; most visibly in the warmth of the real brightness wavetable, which ripples between roughly 0.4 and 0.7.-->
+                The six wavetables used in the listening test: a synthetic and a real wavetable for each of the three timbre qualities (warmth, brightness, and richness).
+                The first column shows the wavetable itself, with wavetable position along the horizontal axis, phase within a single position along the vertical axis, and sample amplitude on a diverging color scale symmetric about zero (blue negative, red positive).
+                The remaining three columns show the timbre qualities measured at every position of that wavetable.
+<!--                : warmth is the fraction of harmonic power falling in the odd harmonics, excluding DC; brightness is the spectral centroid of the log-compressed magnitude spectrum, mapped onto the perceptual centroid scale of Kazazis et al., where a value of 10 corresponds to a centroid of 1&nbsp;kHz; and richness is the spectral spread expressed as a fraction of the Nyquist frequency and then log-compressed. -->
+                Every panel shares the normalized wavetable position on its horizontal axis, and each column shares a vertical scale across all six rows so that the wavetables can be compared directly (<a href="#table-feature-ranges">Table 1</a> lists the minimum and maximum value of every curve).
+                The curves are shown exactly as measured, before the linearizing lookup table is applied.
             </em>
         </p>
 
-        <img class="img-fluid w-100 mx-auto d-block" src="figs/mod_sigs__amp.png">
+        <img id="fig-mod-sigs-amp" class="img-fluid w-100 mx-auto d-block" src="figs/mod_sigs__amp.png">
         <p class="text-center" style="margin-bottom: 3.0rem;">Figure 3:
             <em>
-                TBD.
-<!--                The five amplitude modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a 1.0 Hz raised cosine centred on the middle of the wavetable whose peak-to-peak excursion grows from 0.1 in the minimally modulated reference to 0.9 in the largest modulation amount. These are the modulation signals behind the stimuli in Table 2.-->
+                The five amplitude modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a 1&nbsp;Hz sinusoid centred on the middle of the wavetable whose peak-to-peak excursion grows from 0.1 in the minimally modulated reference to 0.9 in the largest modulation amount, so progressively more of the wavetable is scanned while the rate stays fixed. The resulting audio stimuli can be listened to in <a href="#table-amp">Table 2</a>.
             </em>
         </p>
 
-        <img class="img-fluid w-100 mx-auto d-block" src="figs/mod_sigs__freq.png">
+        <img id="fig-mod-sigs-freq" class="img-fluid w-100 mx-auto d-block" src="figs/mod_sigs__freq.png">
         <p class="text-center" style="margin-bottom: 3.0rem;">Figure 4:
             <em>
-                TBD.
-<!--                The five frequency modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a full amplitude (1.0) raised cosine spanning the entire wavetable, with its rate increasing from 0.25&nbsp;Hz in the minimally modulated reference &mdash; a single sweep up and back across the four seconds &mdash; to 4.0&nbsp;Hz in the largest modulation amount. These are the modulation signals behind the stimuli in Table 3.-->
+                The five frequency modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a full amplitude sinusoid that scans the entire wavetable, with its rate increasing from 0.25&nbsp;Hz in the minimally modulated reference, a single sweep up and back across the four seconds, to 4&nbsp;Hz in the largest modulation amount, so the wavetable is traversed more often while the range scanned stays fixed. The resulting audio stimuli can be listened to in <a href="#table-freq">Table 3</a>.
             </em>
         </p>
 
-        <img class="img-fluid w-100 mx-auto d-block" src="figs/mod_sigs__reg.png">
+        <img id="fig-mod-sigs-reg" class="img-fluid w-100 mx-auto d-block" src="figs/mod_sigs__reg.png">
         <p class="text-center" style="margin-bottom: 3.0rem;">Figure 5:
             <em>
-                TBD.
-<!--                The five irregularity modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a full amplitude (1.0) raised cosine with four peaks and troughs, whose individual cycles are alternately stretched and compressed in a fixed random order by 0% in the periodic reference up to 50% in the largest modulation amount; the total duration, and therefore the average rate of 1&nbsp;Hz, is unchanged. These are the modulation signals behind the stimuli in Table 4.-->
+                The five irregularity modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a full amplitude 1&nbsp;Hz sinusoid whose individual cycles are stretched or compressed in a fixed random order, by 0% in the periodic reference up to 50% in the largest modulation amount; the total duration, and therefore the average rate, is unchanged, so only the evenness of the scanning varies. The resulting audio stimuli can be listened to in <a href="#table-reg">Table 4</a>.
             </em>
         </p>
 
         <h2 class="">Stimuli Listening Samples</h2>
         <hr>
 
-        <p style="text-align: center;">
+        <p id="table-amp" style="text-align: center;">
             Table 2: <em>Listening test stimuli for the amplitude modulation type. Each row is one wavetable, scanned for four seconds by a sinusoidal (1.0 Hz) modulation signal whose amplitude increases from the minimally modulated reference (0.1) to the largest modulation amount (0.9).</em>
         </p>
         <div id="amp-table" class="table-wrapper-3" data-n="6">
@@ -467,7 +483,7 @@
             </div>
         </div>
 
-        <p style="text-align: center;">
+        <p id="table-freq" style="text-align: center;">
             Table 3: <em>Listening test stimuli for the frequency modulation type. Each row is one wavetable, scanned for four seconds by a full amplitude (1.0) sinusoidal modulation signal whose frequency increases from the minimally modulated reference (0.25&nbsp;Hz) to the largest modulation amount (4.0&nbsp;Hz).</em>
         </p>
         <div id="freq-table" class="table-wrapper-3" data-n="6">
@@ -700,7 +716,7 @@
             </div>
         </div>
 
-        <p style="text-align: center;">
+        <p id="table-reg" style="text-align: center;">
             Table 4: <em>Listening test stimuli for the irregularity modulation type. Each row is one wavetable, scanned for four seconds by a full amplitude (1.0) sinusoidal modulation signal with four peaks and troughs whose irregularity increases from the minimally modulated reference (0% i.e. periodic) to the largest modulation amount (50%).</em>
         </p>
         <div id="reg-table" class="table-wrapper-3" data-n="6">

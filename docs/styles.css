@@ -120,3 +120,14 @@
     padding-left: 1rem;
     padding-right: 1rem;
 }
+
+/* breathing room when jumping to a figure or table anchor */
+[id^="fig-"],
+[id^="table-"] {
+    scroll-margin-top: 1.5rem;
+}
+
+/* space between a figure and its caption */
+img.img-fluid + p.text-center {
+    margin-top: 0.5rem;
+}
