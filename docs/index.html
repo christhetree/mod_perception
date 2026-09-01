@@ -114,8 +114,11 @@
                 Since a wavetable's timbre rarely changes completely linearly from one end to the other (see <a href="#fig-wavetables">Figure 2</a>), the modulation signal is first passed through a per-wavetable lookup table that linearizes the timbral dimension of interest (brightness, richness, or warmth): the measured feature curve is made monotonic using isotonic regression and then inverted, so that equal changes in the modulation signal produce equal changes in the target feature.
                 Each modulation signal is a sinusoid in the range [0, 1] with one property varied across five levels: amplitude (<a href="#fig-mod-sigs-amp">Figure 3</a>), a fixed 1 Hz oscillation centred on the middle of the wavetable with a peak-to-peak excursion of 0.1 to 0.9 of its full range; frequency (<a href="#fig-mod-sigs-freq">Figure 4</a>), spanning the full wavetable at 0.25, 0.5, 1, 2, and 4 Hz; and irregularity (<a href="#fig-mod-sigs-reg">Figure 5</a>), a 1 Hz oscillation whose individual cycles are stretched or compressed by 0%, 12.5%, 25%, 37.5%, or 50% in a fixed random order, leaving the total duration, and therefore the average rate, unchanged.
                 For each modulation signal type the smallest amount serves as the reference against which the other four are compared.
-                Each rendered audio sample is finally loudness-normalized to −18 LUFS (ITU-R BS.1770), given a 256-sample linear fade in and out to avoid clicks, and written as a 44.1 kHz stereo WAV file with the mono signal duplicated across both channels.
+                Each rendered audio sample is finally loudness-normalized to -18 LUFS (ITU-R BS.1770), given a 256-sample linear fade in and out to avoid clicks, and written as a 44.1 kHz stereo WAV file with the mono signal duplicated across both channels.
                 All 90 audio stimuli can be listened to below, grouped by modulation signal type: amplitude (<a href="#table-amp">Table 2</a>), frequency (<a href="#table-freq">Table 3</a>), and irregularity (<a href="#table-reg">Table 4</a>).
+            </p>
+            <p>
+                <!--                : warmth is the fraction of harmonic power falling in the odd harmonics, excluding DC; brightness is the spectral centroid of the log-compressed magnitude spectrum, mapped onto the perceptual centroid scale of Kazazis et al., where a value of 10 corresponds to a centroid of 1&nbsp;kHz; and richness is the spectral spread expressed as a fraction of the Nyquist frequency and then log-compressed. -->
             </p>
         </div>
 
@@ -221,7 +224,6 @@
                 The six wavetables used in the listening test: a synthetic and a real wavetable for each of the three timbre qualities (warmth, brightness, and richness).
                 The first column shows the wavetable itself, with wavetable position along the horizontal axis, phase within a single position along the vertical axis, and sample amplitude on a diverging color scale symmetric about zero (blue negative, red positive).
                 The remaining three columns show the timbre qualities measured at every position of that wavetable.
-<!--                : warmth is the fraction of harmonic power falling in the odd harmonics, excluding DC; brightness is the spectral centroid of the log-compressed magnitude spectrum, mapped onto the perceptual centroid scale of Kazazis et al., where a value of 10 corresponds to a centroid of 1&nbsp;kHz; and richness is the spectral spread expressed as a fraction of the Nyquist frequency and then log-compressed. -->
                 Every panel shares the normalized wavetable position on its horizontal axis, and each column shares a vertical scale across all six rows so that the wavetables can be compared directly (<a href="#table-feature-ranges">Table 1</a> lists the minimum and maximum value of every curve).
                 The curves are shown exactly as measured, before the linearizing lookup table is applied.
             </em>
@@ -247,7 +249,9 @@
                 The five irregularity modulation signals, one per column, plotted as wavetable position over the four seconds of a stimulus. Each is a full amplitude 1&nbsp;Hz sinusoid whose individual cycles are stretched or compressed in a fixed random order, by 0% in the periodic reference up to 50% in the largest modulation amount; the total duration, and therefore the average rate, is unchanged, so only the evenness of the scanning varies. The resulting audio stimuli can be listened to in <a href="#table-reg">Table 4</a>.
             </em>
         </p>
+    </div>
 
+    <div class="section">
         <h2 class="">Stimuli Listening Samples</h2>
         <hr>
 
@@ -273,6 +277,74 @@
                     <th class="audio-col">Amount 2<br>(0.5)</th>
                     <th class="audio-col">Amount 3<br>(0.7)</th>
                     <th class="audio-col">Amount 4<br>(0.9)</th>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
                 </tr>
                 <tr>
                     <td>Brightness</td>
@@ -410,74 +482,6 @@
                         </audio>
                     </td>
                 </tr>
-                <tr>
-                    <td>Warmth</td>
-                    <td>Synthetic</td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Warmth</td>
-                    <td>Real</td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.10_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.30_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.50_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.70_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__amp_1.00hz_0.90_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                </tr>
             </table>
             <div class="text-center">
                 <p style="margin-bottom: 3.0rem;">Table scrolls horizontally if space is limited.</p>
@@ -506,6 +510,74 @@
                     <th class="audio-col">Amount 2<br>(1.0 Hz)</th>
                     <th class="audio-col">Amount 3<br>(2.0 Hz)</th>
                     <th class="audio-col">Amount 4<br>(4.0 Hz)</th>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_0.25hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_0.50hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_1.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_2.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__freq_4.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_0.25hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_0.50hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_1.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_2.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_4.00hz_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
                 </tr>
                 <tr>
                     <td>Brightness</td>
@@ -643,74 +715,6 @@
                         </audio>
                     </td>
                 </tr>
-                <tr>
-                    <td>Warmth</td>
-                    <td>Synthetic</td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__freq_0.25hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__freq_0.50hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__freq_1.00hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__freq_2.00hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__freq_4.00hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Warmth</td>
-                    <td>Real</td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_0.25hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_0.50hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_1.00hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_2.00hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__freq_4.00hz_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                </tr>
             </table>
             <div class="text-center">
                 <p style="margin-bottom: 3.0rem;">Table scrolls horizontally if space is limited.</p>
@@ -739,6 +743,74 @@
                     <th class="audio-col">Amount 2<br>(25.0%)</th>
                     <th class="audio-col">Amount 3<br>(37.5%)</th>
                     <th class="audio-col">Amount 4<br>(50.0%)</th>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Synthetic</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Warmth</td>
+                    <td>Real</td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
+                    <td>
+                        <audio controls="controls" class="player" preload="metadata">
+                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
+                            Unsupported browser.
+                        </audio>
+                    </td>
                 </tr>
                 <tr>
                     <td>Brightness</td>
@@ -876,79 +948,74 @@
                         </audio>
                     </td>
                 </tr>
-                <tr>
-                    <td>Warmth</td>
-                    <td>Synthetic</td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_synthetic__256_1024__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Warmth</td>
-                    <td>Real</td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.000_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.125_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.250_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.375_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                    <td>
-                        <audio controls="controls" class="player" preload="metadata">
-                            <source src="audio/warmth_real__vintage__logue_saw__166_1024__reg_1.00hz_0.500_-18lufs.wav" type="audio/wav">
-                            Unsupported browser.
-                        </audio>
-                    </td>
-                </tr>
             </table>
             <div class="text-center">
                 <p style="margin-bottom: 3.0rem;">Table scrolls horizontally if space is limited.</p>
             </div>
         </div>
+    </div>
+
+    <div class="section mb-5">
+        <h2 class="">Listening Test</h2>
+        <hr>
+        <p>
+            The online listening test followed the <a href="https://www.itu.int/rec/R-REC-BS.1116/en" target="_blank">MUSHRA</a> standard and was hosted using the <a href="https://www.audiolabs-erlangen.de/resources/webMUSHRA" target="_blank">webMUSHRA</a> framework and AWS.
+            The test consisted of one training question and 18 test questions, each with reference audio, five audio stimuli, and a 0 to 100 rating scale for each stimulus.
+            Participants were encouraged to use the full range of the rating scale for each question and self-reported their listening equipment at the time of submission.
+            They were also required to click each audio playback button and stimulus rating slider at least once before being able to continue to the next question.
+            During analysis, all responses of a participant were excluded if a hidden reference was rated above 25, all five stimuli received identical ratings, completion time for a question took less than 24 seconds, or they self-reported the use of phone or laptop speakers.
+        </p>
+        <h5>Listening Test Website Screenshots</h5>
+        <ol>
+            <li>
+                <a href="listening_test/1_landing_page.png" target="_blank">Instructions Page</a>
+            </li>
+            <li>
+                <a href="listening_test/2_volume_adjustment.png" target="_blank">Volume Adjustment Page</a>
+            </li>
+            <li>
+                <a href="listening_test/3_training.png" target="_blank">Training Question</a>
+            </li>
+            <li>
+                <a href="listening_test/4_question.png" target="_blank">Test Question</a>
+            </li>
+            <li>
+                <a href="listening_test/5_submission_page.png" target="_blank">Submission Page</a>
+            </li>
+        </ol>
+    </div>
+
+    <div class="section mb-5">
+        <h2 class="">Downloads</h2>
+        <hr>
+        <h5>Listening Test Responses</h5>
+        <ul>
+            <li>
+                <a href="docs/listening_test_responses.tsv" download>listening_test_responses.tsv</a>
+            </li>
+        </ul>
+        <h5>Wavetables</h5>
+        <ul>
+            <li>
+                Warmth (Synthetic): <a href="wavetables/warmth_synthetic__256_1024.pt" download>warmth_synthetic__256_1024.pt</a>
+            </li>
+            <li>
+                Warmth (Real): <a href="wavetables/warmth_real__vintage__logue_saw__166_1024.pt" download>warmth_real__vintage__logue_saw__166_1024.pt</a>
+            </li>
+            <li>
+                Brightness (Synthetic): <a href="wavetables/brightness_synthetic__256_1024.pt" download>brightness_synthetic__256_1024.pt</a>
+            </li>
+            <li>
+                Brightness (Real): <a href="wavetables/brightness_real__harmonics__synced_sines__256_1024.pt" download>brightness_real__harmonics__synced_sines__256_1024.pt</a>
+            </li>
+            <li>
+                Richness (Synthetic): <a href="wavetables/richness_synthetic__256_1024.pt" download>richness_synthetic__256_1024.pt</a>
+            </li>
+            <li>
+                Richness (Real): <a href="wavetables/richness_real__filter__acid_saw__46_1024__inverted.pt" download>richness_real__filter__acid_saw__46_1024__inverted.pt</a>
+            </li>
+        </ul>
+    </div>
 
     <hr>
     <footer>
