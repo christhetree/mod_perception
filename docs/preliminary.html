@@ -16,7 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="Christopher Mitcheltree">
-    <title>Do Audio Distance Functions Hear Timbre Modulation? A Machine Listening Study</title>
+    <title>Modulation Type and Amount Shape Human Perception of Timbral Change in Wavetable Synthesis</title>
 
     <!-- Bootstrap core CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
@@ -32,19 +32,19 @@
     <div class="row">
         <div class="col-lg-12">
             <br>
-            <h1 class="mt-5 mb-3">Do Audio Distance Functions Hear Timbre Modulation?<br>A Machine Listening Study</h1>
+            <h1 class="mt-5 mb-3">Modulation Type and Amount Shape Human<br>Perception of Timbral Change in Wavetable Synthesis</h1>
             <p class="lead">
-                <a href="https://christhetr.ee/" target=”_blank”>Christopher Mitcheltree</a>,
                 <a href="https://www.linkedin.com/in/sachin-subramanian-642742212/" target=”_blank”>Sachin Subramanian</a>,
+                <a href="https://iranroman.github.io/" target=”_blank”>Iran R. Roman</a>,
                 <a href="https://www.qmul.ac.uk/eecs/people/profiles/pauwelsjohan.html" target=”_blank”>Johan Pauwels</a>,
                 <a href="https://joshreiss.github.io/" target=”_blank”>Joshua D. Reiss</a>,
-                <a href="https://iranroman.github.io/" target=”_blank”>Iran R. Roman</a>
+                <a href="https://christhetr.ee/" target=”_blank”>Christopher Mitcheltree</a>
             </p>
 
             <p class="lead">Centre for Digital Music, Queen Mary University of London, UK</p>
 
-            <div class="mb-3">
-                <a class="btn btn-outline-dark" href="docs/mitcheltree2026do.pdf" target=”_blank” type="button">
+            <div>
+                <a class="btn btn-outline-dark" href="docs/subramanian2026human.pdf" target=”_blank” type="button">
                     <i class="bi bi-file-richtext"></i> Paper
                 </a>
                 <a class="btn btn-outline-dark" href="https://github.com/christhetree/mod_perception" target=”_blank” type="button">
@@ -57,34 +57,26 @@
 <!--                    <i class="bi bi-easel"></i> Poster-->
 <!--                </a>-->
             </div>
-
-            <p><a href="preliminary.html" target=”_blank”>Click here</a> for preliminary work (ISMIR 2026 Late-breaking Demo).</p>
         </div>
     </div>
 </div>
 
 <div class="container">
-    <div class="section mt-3 mb-5">
+    <div class="section mt-5 mb-5">
         <div class="abstract">
             <h2>Abstract</h2>
             <hr>
             <p>
-                Audio distance functions are widely used in deep inverse audio problems like sound matching, yet their alignment with human perception of dynamic timbre modulation remains uncharacterized.
-                In light of this, we conduct a MUSHRA-style listening test with 54 participants evaluating human sensitivity to modulation amplitude, frequency, and irregularity across warmth, brightness, and richness timbre qualities using wavetable synthesis.
-                Listeners demonstrate robust perceptual invariance to underlying timbre and wavetable source, with perceived difference scaling linearly with modulation amount.
-                We then evaluate nine audio distance functions across STFT-based, wavelet-based, and neural representations using linear regression, variance decomposition, and correlation with human ratings.
-                Wavelet scattering transforms provide the most consistent alignment with human perception across modulation types, while STFT-based methods fail to resolve modulation frequency, and neural methods exhibit fragmented, embedding dependent competencies.
-                Our findings offer empirical evidence to guide the principled selection and design of perceptually grounded loss functions for deep inverse problems involving modulated audio.
-                We make our code, audio samples, and listening test data available.
+                Modulation is central to sound synthesis, yet its perceptual salience remains poorly characterized.
+                We investigate how amplitude, frequency, and irregularity of a modulation signal driving wavetable-position scanning affect perceived timbral change.
+                In a MUSHRA-style listening test, participants rated perceived difference between a minimally modulated reference and four increasingly modulated versions, across a wide array of timbres.
+                Perceived difference increases linearly with modulation amount for all three modulation types.
+                A repeated-measures ANOVA confirms significant main effects of modulation type and amount, and their interaction, with frequency modulation producing the largest perceptual changes, followed by amplitude, and irregularity the smallest; an ordering that holds consistently at both low and high modulation amounts.
+                Our results provide quantitative evidence for perceptually informed modulation design, and a reproducible framework for studying time-varying synthesizer timbre.
             </p>
             <br>
             <img id="fig-visual-abstract" class="img-fluid w-100 mx-auto d-block" src="figs/visual_abstract.svg">
-            <p class="text-center">Figure 1:
-                <em>
-                    A modulation signal can vary in amplitude, frequency, and irregularity to scan through a wavetable that spans a range of timbre qualities.
-                    The resulting audio stimulus was rated by listeners for perceived difference from a minimally modulated reference.
-                </em>
-            </p>
+            <p class="text-center">Figure 1: <em>A modulation signal can vary in amplitude, frequency, and irregularity to scan through a wavetable that spans a range of timbre qualities. The resulting audio was rated by listeners for perceived difference from a minimally modulated reference. We hypothesized that perceived difference correlates with modulation amount across all three properties, independent of timbre.</em></p>
         </div>
     </div>
 
