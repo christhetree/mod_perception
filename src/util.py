@@ -1,16 +1,50 @@
+import glob
 import logging
 import os
-from typing import Optional, Tuple, List
+import re
+from typing import Optional, Tuple, List, Iterator, Dict
 
 import numpy as np
 import pyloudnorm as pyln
 import torch as tr
 import torch.nn.functional as F
-from torch import Tensor as T
+from torch import Tensor as T, nn
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(level=os.environ.get("LOGLEVEL", "INFO"))
+
+
+class ReadOnlyTensorDict(nn.Module):
+    def __init__(self, data: Dict[str | int, T], persistent: bool = True):
+        super().__init__()
+        self.persistent = persistent
+        self.keys = set(data.keys())
+        for k, v in data.items():
+            self.register_buffer(f"tensor_{k}", v, persistent=persistent)
+
+    def __getitem__(self, key: str | int) -> T:
+        return self.get_buffer(f"tensor_{key}")
+
+    def __contains__(self, key: str | int) -> bool:
+        return key in self.keys
+
+    def __len__(self) -> int:
+        return len(self.keys)
+
+    def __iter__(self) -> Iterator[str | int]:
+        return iter(self.keys)
+
+    def keys(self) -> Iterator[str | int]:
+        return iter(self.keys)
+
+    def values(self) -> Iterator[T]:
+        for k in self.keys:
+            yield self[k]
+
+    def items(self) -> Iterator[Tuple[str | int, T]]:
+        for k in self.keys:
+            yield k, self[k]
 
 
 def linear_interpolate_last_dim(x: T, n: int, align_corners: bool = True) -> T:
@@ -231,3 +265,60 @@ def make_quasi_periodic(
     new_mod_sig = tr.cat(sections, dim=0)
     new_mod_sig = new_mod_sig[:orig_size]
     return new_mod_sig, norm_gaps
+
+
+def parse_amount(mod_sig: str) -> Tuple[str, float, str]:
+    """Split a mod signal name around its last number, which is the amount, e.g.
+    "amp_1.00hz_0.10" -> ("amp_1.00hz_", 0.10, "") and
+    "freq_0.25hz" -> ("freq_", 0.25, "hz").
+    Strips optional trailing __phase_... if present."""
+    mod_sig = re.sub(r"__phase_\d+_\d+$", "", mod_sig)
+    match = re.match(r"^(.*?)(\d+(?:\.\d+)?)(\D*)$", mod_sig)
+    assert match is not None, f"Could not find an amount in {mod_sig}"
+    return match.group(1), float(match.group(2)), match.group(3)
+
+
+def find_variants(
+    samples_dir: str, wt_name: str, mod_sig: str, suffix: str
+) -> List[str]:
+    """Find all samples of wt_name whose mod signal matches mod_sig apart from
+    its amount, including mod_sig itself so that the trivial self distance is
+    also measured (not every distance function is guaranteed to return 0).
+    Supports both unphased and phase-shifted variants."""
+    prefix, _, unit = parse_amount(mod_sig)
+    clean_suffix = suffix[:-4] if suffix.endswith(".wav") else suffix
+    pattern = os.path.join(samples_dir, f"{wt_name}__{prefix}*{unit}*.wav")
+    paths = []
+    for path in sorted(glob.glob(pattern)):
+        filename = os.path.basename(path)
+        name = filename[:-4] if filename.endswith(".wav") else filename
+        name = re.sub(r"__phase_\d+_\d+$", "", name)
+        if clean_suffix and name.endswith(clean_suffix):
+            name = name[: -len(clean_suffix)]
+        variant = name[len(f"{wt_name}__") :]
+        try:
+            variant_prefix, _, variant_unit = parse_amount(variant)
+        except AssertionError:
+            continue
+        if (variant_prefix, variant_unit) != (prefix, unit):
+            continue
+        paths.append(path)
+
+    def _sort_key(p: str) -> Tuple[float, int]:
+        fname = os.path.basename(p)
+        pm = re.search(r"__phase_(\d+)_\d+", fname)
+        pidx = int(pm.group(1)) if pm else 0
+        cname = re.sub(r"__phase_\d+_\d+", "", fname)
+        if clean_suffix and cname.endswith(f"{clean_suffix}.wav"):
+            cname = cname[: -len(f"{clean_suffix}.wav")]
+        elif cname.endswith(".wav"):
+            cname = cname[:-4]
+        cname = cname[len(f"{wt_name}__") :]
+        try:
+            _, amt, _ = parse_amount(cname)
+        except AssertionError:
+            amt = 0.0
+        return (amt, pidx)
+
+    paths.sort(key=_sort_key)
+    return paths
