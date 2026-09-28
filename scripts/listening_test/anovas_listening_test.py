@@ -21,6 +21,8 @@ from statsmodels.formula._manager import FormulaManager
 from statsmodels.regression.linear_model import OLS
 from statsmodels.stats.anova import _not_slice, _ssr_reduced_model
 
+from paths import OUT_DIR
+
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 log.setLevel(level=os.environ.get("LOGLEVEL", "INFO"))
@@ -783,19 +785,14 @@ def run_all_anovas(
 
 
 if __name__ == "__main__":
-    repo_root = Path(__file__).resolve().parent.parent
-    default_data_path = (
-        repo_root / "data" / "listening_test_responses_postprocessed.tsv"
-    )
-
     parser = argparse.ArgumentParser(
         description="Run ANOVA analyses on prepared MUSHRA listening test data."
     )
     parser.add_argument(
         "data_path",
         nargs="?",
-        default=str(default_data_path),
-        help=f"Path to prepared MUSHRA data file (tsv or csv; default: {default_data_path})",
+        default=os.path.join(OUT_DIR, "listening_test_responses_postprocessed.tsv"),
+        help=f"Path to prepared MUSHRA data file (tsv or csv; default: ../../out/listening_test_responses_postprocessed.tsv)",
     )
     parser.add_argument(
         "--dv",
