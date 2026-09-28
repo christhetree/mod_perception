@@ -405,3 +405,50 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# ======================================================================
+# DATA FILTERING SUMMARY
+# ======================================================================
+#
+# Users removed: 23 (of 51 initial participants)
+#   - Excluded for rating reference > 10 in > 15% of trials (23 users):
+#       * 029d0004-b12b-4345-b48b-d032e35dc81c: 7/18 trials (38.9%)
+#       * 04607afd-671d-4010-a181-d94ca907f1fd: 5/18 trials (27.8%)
+#       * 0f3c45e3-38d0-46dd-9dab-e8388e87a0ed: 4/18 trials (22.2%)
+#       * 0f4851c3-d8a6-43ba-bfc7-21dde6edc2fc: 5/18 trials (27.8%)
+#       * 14f6fc68-9a27-40e5-98ab-b2d1e38ab12e: 3/18 trials (16.7%)
+#       * 16bcc0c4-b9ac-4a57-9517-f12fe835be29: 8/18 trials (44.4%)
+#       * 18ccb701-2df0-42ce-8980-437612e0bb82: 3/18 trials (16.7%)
+#       * 204caf3b-55cb-47a9-920b-cc96988bcaa4: 18/18 trials (100.0%)
+#       * 4ce9d4e2-0786-4f01-8a82-dfd08587ed30: 5/18 trials (27.8%)
+#       * 4ea66deb-59b1-4e1e-8988-169b5ea04e23: 5/18 trials (27.8%)
+#       * 6090cde1-199f-446f-8be0-5af430a526c5: 13/18 trials (72.2%)
+#       * 61a2b24f-57b8-43dc-b6d1-d27febadeaaa: 4/18 trials (22.2%)
+#       * 84709dd5-605c-4440-85f6-00fc36924a1c: 3/18 trials (16.7%)
+#       * 8ab8c143-54ca-4b1a-8035-64c8f1ca9c3a: 8/18 trials (44.4%)
+#       * 92d30785-45fe-49ae-8ba1-2d0be1045a4b: 12/18 trials (66.7%)
+#       * a75817c8-b3ec-47e0-a505-cf1c9a2101c3: 7/18 trials (38.9%)
+#       * aad8d2a2-407f-46fe-91d6-6cf0bca30b7f: 6/18 trials (33.3%)
+#       * acf1bde0-2873-4d0b-b1dc-c0896653720c: 3/18 trials (16.7%)
+#       * bfb9dd35-eb51-4635-9cbd-ddf058f2d183: 18/18 trials (100.0%)
+#       * c7deccbf-b868-4f08-a9ec-6dbfc8c7f3e2: 4/18 trials (22.2%)
+#       * cf044467-0a55-49a3-8b71-4e85eced0577: 7/18 trials (38.9%)
+#       * d6cf2853-febf-4e8f-89f4-2e598f9637af: 17/18 trials (94.4%)
+#       * ff7d76b3-8310-47a8-aa3c-5ebcea2d1cf9: 8/18 trials (44.4%)
+#
+# Trials removed: 474
+#   - Training trials excluded:                     51
+#   - Trials from excluded users:                   414
+#   - Bad quality trials excluded (retained users): 9
+#     Breakdown by criterion (trials may match multiple):
+#       * total_time < 24000 ms : 7 trials
+#       * all_identical         : 2 trials
+#
+# Final dataset:
+#   - Initial dataset:  969 trials across 51 users (4845 rows)
+#   - Filtered dataset: 495 trials across 28 users (2475 rows)
+#   - Users with complete data (18 trials): 23 of 28 (82.1%)
+# ======================================================================
+
+# Also removed 3 laptop speaker users
