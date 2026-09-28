@@ -9,7 +9,6 @@ import pandas as pd
 import torch as tr
 import torchaudio
 from auraloss.freq import MultiResolutionSTFTLoss
-from auraloss.time import ESRLoss
 from torch import Tensor as T
 from torch import nn
 
@@ -23,8 +22,8 @@ from losses import (
     EncodecEmbeddingLoss,
     VGGishEmbeddingLoss,
 )
-from plot_distances import DEFAULT_WAVETABLES, resolve_group
-from util import find_variants, parse_amount
+from paths import OUT_DIR
+from util import find_variants, parse_amount, resolve_group
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -37,12 +36,6 @@ def load_audio(path: str, sr: int) -> T:
     # The samples are mono duplicated across both channels
     audio = audio[:1, :]
     return audio.unsqueeze(0)
-
-
-def phase_shift_audio(audio: T, n_samples: int) -> T:
-    """Circularly shift audio to simulate a phase shift. The samples are faded in
-    and out, so wrapping around introduces almost no discontinuity."""
-    return tr.roll(audio, shifts=n_samples, dims=-1)
 
 
 def resolve_loss_fn(
@@ -132,9 +125,6 @@ def compute_distances(
     save_path: str,
     sr: int = 44100,
     target_lufs: int = -18,
-    use_rand_phase_shift: bool = False,
-    max_shift: int = 2048,
-    shift_seed: int = 42,
     ref_match_phase: bool = False,
 ) -> pd.DataFrame:
     """Compute distances for single wavetables and save the result to a TSV file.
@@ -155,12 +145,6 @@ def compute_distances(
         Sample rate.
     target_lufs : int, default=-18
         Loudness normalization level used in filenames.
-    use_rand_phase_shift : bool, default=False
-        Whether to apply random circular shift to reference audio.
-    max_shift : int, default=2048
-        Maximum shift in samples when use_rand_phase_shift is True.
-    shift_seed : int, default=42
-        Random seed for shift generator.
     ref_match_phase : bool, default=False
         If True, compare each variant at phase_n against the reference audio with
         the corresponding phase_n.
@@ -168,7 +152,6 @@ def compute_distances(
     """
     os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
     suffix = f"_{target_lufs}lufs.wav"
-    rand_gen = tr.Generator().manual_seed(shift_seed)
 
     loss_entries = [resolve_loss_fn(entry) for entry in loss_fns]
     loss_names = [name for name, _ in loss_entries]
@@ -228,22 +211,8 @@ def compute_distances(
                         audio.shape == ref_audio.shape
                     ), f"Shape mismatch: {audio.shape} vs {ref_audio.shape}"
 
-                    if use_rand_phase_shift:
-                        shift = int(
-                            tr.randint(
-                                low=0,
-                                high=max_shift + 1,
-                                size=(1,),
-                                generator=rand_gen,
-                            ).item()
-                        )
-                    else:
-                        shift = 0
-
                     with tr.no_grad():
-                        dist = loss_fn(
-                            audio, phase_shift_audio(ref_audio, shift)
-                        ).item()
+                        dist = loss_fn(audio, ref_audio).item()
 
                     is_reference = (amount == ref_amount) and (
                         phase_idx == target_ref_phase
@@ -261,13 +230,12 @@ def compute_distances(
                             "phase": phase_idx,
                             "ref_phase": target_ref_phase,
                             "is_reference": is_reference,
-                            "ref_shift": shift,
                             "distance": dist,
                         }
                     )
                     log.info(
                         f"  {variant_mod_sig} vs ref_phase_{target_ref_phase}: "
-                        f"{dist:.6g} (shift={shift})"
+                        f"{dist:.6g}"
                     )
 
     df = pd.DataFrame(rows)
@@ -282,25 +250,23 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--samples-dir",
-        default="../../out/audio_samples",
-        # default="../out/audio_samples_23_phases",
-        help="Directory containing audio samples (default: ../out/audio_samples)",
+        default=os.path.join(OUT_DIR, "stimuli"),
+        help="Directory containing audio samples",
     )
     parser.add_argument(
         "--save-dir",
-        default="../out/distances",
-        help="Directory to save distance TSV (default: ../out/distances)",
+        default=OUT_DIR,
+        help="Directory to save distance TSV",
     )
     parser.add_argument(
         "--save-path",
-        default=None,
-        help="Explicit TSV path (default: {save-dir}/distances_testing.tsv)",
+        default=os.path.join(OUT_DIR, "audio_distances.tsv"),
+        help="Explicit TSV save path",
     )
     parser.add_argument(
         "--ref-match-phase",
         action="store_true",
         default=False,
-        # default=True,
         help=(
             "If True, compare each variant at phase_n against reference at phase_n. "
             "If False (default), always compare against reference at phase 0."
@@ -311,43 +277,24 @@ if __name__ == "__main__":
     samples_dir = args.samples_dir
     save_dir = args.save_dir
     tsv_path = args.save_path or os.path.join(save_dir, "testing.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_mss_log_lin.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_matched_mss_log_lin.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_mss_rev.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_matched_mss_rev.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_mfcc.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_matched_mfcc.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_vggish.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_vggish.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_matched_vggish.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_clap2.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_encodec48k.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_encodec24k.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_encodec48k.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_panns_wavegram_logmel.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_scat1d.tsv")
-    # tsv_path = args.save_path or os.path.join(save_dir, "distances_phases_jtfs.tsv")
     ref_match_phase = args.ref_match_phase
     sr = 44100
     target_lufs = -18
-    use_rand_phase_shift = False
-    max_shift = 2048  # Two wavetable frames (44100 / 1024 Hz carrier)
-    shift_seed = 42
 
     loss_fns = [
-        # ("mse", nn.MSELoss()),
-        # ("esr", ESRLoss()),
-        # ("mss", MultiResolutionSTFTLoss()),
-        ("mss_log_lin", MultiResolutionSTFTLoss(
-            fft_sizes=[64, 128, 256, 512, 1024, 2048],
-            hop_sizes=[16, 32, 64, 128, 256, 512],
-            win_lengths=[64, 128, 256, 512, 1024, 2048],
-            w_sc=0.0,
-            w_phs=0.0,
-            w_lin_mag=1.0,
-            w_log_mag=1.0,
-            mag_distance="L1",
-        )),
+        (
+            "mss_log_lin",
+            MultiResolutionSTFTLoss(
+                fft_sizes=[64, 128, 256, 512, 1024, 2048],
+                hop_sizes=[16, 32, 64, 128, 256, 512],
+                win_lengths=[64, 128, 256, 512, 1024, 2048],
+                w_sc=0.0,
+                w_phs=0.0,
+                w_lin_mag=1.0,
+                w_log_mag=1.0,
+                mag_distance="L1",
+            ),
+        ),
         (
             "mss_rev",
             LogMSSLoss(
@@ -361,26 +308,54 @@ if __name__ == "__main__":
             ),
         ),
         ("mfcc", MFCCDistance(sr=sr)),
-        # ("mfcc_p2", MFCCDistance(sr=sr, p=2)),
-        # ("vggish", VGGishEmbeddingLoss(in_sr=sr)),
-        # ("vggish_tv", VGGishEmbeddingLoss(in_sr=sr, use_time_varying=True)),
-        # ("clap2", ClapEmbeddingLoss(use_cuda=False, in_sr=sr)),
-        # ("encodec48k", EncodecEmbeddingLoss(in_sr=sr, model_id="facebook/encodec_48khz")),
-        # ("encodec24k", EncodecEmbeddingLoss(in_sr=sr, model_id="facebook/encodec_24khz")),
-        # ("encodec48_tv", EncodecEmbeddingLoss(in_sr=sr, use_time_varying=True)),
-        # ("panns_cnn14_32k", PANNsEmbeddingLoss(variant="cnn14-32k", in_sr=sr)),
         # (
-        #     "panns_wavegram_logmel",
-        #     PANNsEmbeddingLoss(variant="wavegram-logmel", in_sr=sr),
+        #     "scat1d",
+        #     Scat1DLoss(
+        #         shape=176400,
+        #         J=12,
+        #         Q1=8,
+        #         Q2=2,
+        #         T=None,
+        #         max_order=2,
+        #         p=2,
+        #         use_rho_log1p=True,
+        #     ),
         # ),
-        # ("scat1d", Scat1DLoss(shape=176400, J=12, Q1=8, Q2=2, T=None, max_order=2, p=2)),
-        # ("scat1d_log1p", Scat1DLoss(shape=176400, J=12, Q1=8, Q2=2, T=None, max_order=2, p=2, use_rho_log1p=True)),
-        # ("scat1d_cqt", Scat1DLoss(shape=176400, J=12, Q1=8, Q2=2, T=1, max_order=1, p=2)),
-        # ("jtfs", JTFSTLoss(shape=176400, J=12, Q1=8, Q2=2, J_fr=3, Q_fr=2, T=None, F=None, format_="joint", p=2)),
-        # ("jtfs2", JTFSTLoss(shape=176400, J=12, Q1=8, Q2=2, J_fr=5, Q_fr=2, T=2048, F=1, format_="joint", p=2, use_rho_log1p=True)),
-        # ("jtfs_log1p", JTFSTLoss(shape=176400, J=12, Q1=8, Q2=2, J_fr=5, Q_fr=2, T=None, F=None, format_="joint", p=2, use_rho_log1p=True)),
+        # (
+        #     "jtfs",
+        #     JTFSTLoss(
+        #         shape=176400,
+        #         J=12,
+        #         Q1=8,
+        #         Q2=2,
+        #         J_fr=5,
+        #         Q_fr=2,
+        #         T=None,
+        #         F=None,
+        #         format_="joint",
+        #         p=2,
+        #         use_rho_log1p=True,
+        #     ),
+        # ),
+        ("vggish", VGGishEmbeddingLoss(in_sr=sr)),
+        ("clap", ClapEmbeddingLoss(use_cuda=False, in_sr=sr)),
+        (
+            "encodec48k",
+            EncodecEmbeddingLoss(in_sr=sr, model_id="facebook/encodec_48khz"),
+        ),
+        (
+            "panns_wavegram_logmel",
+            PANNsEmbeddingLoss(variant="wavegram-logmel", in_sr=sr),
+        ),
     ]
-    wavetables = DEFAULT_WAVETABLES
+    wavetables = [
+        "brightness_real__harmonics__synced_sines__256_1024",
+        "brightness_synthetic__256_1024",
+        "richness_real__filter__acid_saw__46_1024__inverted",
+        "richness_synthetic__256_1024",
+        "warmth_real__vintage__logue_saw__166_1024",
+        "warmth_synthetic__256_1024",
+    ]
     mod_sig_references = [
         "amp_1.00hz_0.10",
         "freq_0.25hz",
@@ -411,8 +386,5 @@ if __name__ == "__main__":
         save_path=tsv_path,
         sr=sr,
         target_lufs=target_lufs,
-        use_rand_phase_shift=use_rand_phase_shift,
-        max_shift=max_shift,
-        shift_seed=shift_seed,
         ref_match_phase=ref_match_phase,
     )

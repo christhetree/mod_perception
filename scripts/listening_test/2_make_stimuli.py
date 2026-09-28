@@ -10,6 +10,7 @@ import torchaudio
 from torch import Tensor as T
 
 import util
+from modulations import make_quasi_periodic, make_mod_signal
 from paths import DATA_DIR, OUT_DIR
 
 logging.basicConfig()
@@ -50,9 +51,9 @@ def make_mod_sig(
     randomness of the periodicity for "reg". mod_freq is the fixed rate of the
     "amp" and "reg" modulations and is unused for "freq"."""
     if mod_type == "freq":
-        return util.make_mod_signal(n_samples, sr, amount, shape="cos")
+        return make_mod_signal(n_samples, sr, amount, shape="cos")
     elif mod_type == "amp":
-        mod_sig = util.make_mod_signal(
+        mod_sig = make_mod_signal(
             n_samples, sr, mod_freq, shape="cos", phase=tr.pi / 2
         )
         mod_sig = amp_center_val + (mod_sig - 0.5) * amount
@@ -62,8 +63,8 @@ def make_mod_sig(
         )
         return mod_sig
     elif mod_type == "reg":
-        mod_sig = util.make_mod_signal(n_samples, sr, mod_freq, shape="cos")
-        mod_sig, norm_gaps = util.make_quasi_periodic(
+        mod_sig = make_mod_signal(n_samples, sr, mod_freq, shape="cos")
+        mod_sig, norm_gaps = make_quasi_periodic(
             mod_sig, randomness=amount, seed=reg_seed
         )
         log.info(f"r={amount:.2f} intervals: {[f'{g:.2f}' for g in norm_gaps]}")
@@ -196,8 +197,8 @@ def render_and_save_sweep(
 
 if __name__ == "__main__":
     wavetable_dir = os.path.join(DATA_DIR, "wavetables")
-    save_dir = OUT_DIR
-    plot_dir = os.path.join(OUT_DIR, "mod_sigs")
+    save_dir = os.path.join(OUT_DIR, "stimuli")
+    plot_dir = os.path.join(OUT_DIR, "figures")
     sr = 44100
     sweep_dur_sec = 4.0
     target_lufs = -18
