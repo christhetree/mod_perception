@@ -98,7 +98,7 @@ def extract_stimulus_tag(
     variant_name: str,
     wt_name: str,
     phase_str: str,
-    target_lufs: int,
+    target_lufs: Union[int, float] = -18,
 ) -> str:
     """Extract the base stimulus tag from a variant filename.
 
@@ -112,7 +112,7 @@ def extract_stimulus_tag(
         Wavetable name prefix.
     phase_str : str
         Phase substring (e.g. '__phase_0_24') or empty string.
-    target_lufs : int
+    target_lufs : Union[int, float], default=-18
         Target LUFS value used in filename formatting.
 
     Returns
@@ -126,14 +126,14 @@ def extract_stimulus_tag(
     lufs_tag = f"_{target_lufs}lufs"
     if core.endswith(lufs_tag):
         return core[: -len(lufs_tag)]
-    return re.sub(r"_[+-]?\d+lufs$", "", core)
+    return re.sub(r"_[+-]?\d+(?:\.\d+)?lufs$", "", core)
 
 
 def find_reference_path(
     samples_dir: str,
     wt_name: str,
     mod_sig: str,
-    target_lufs: int,
+    target_lufs: Union[int, float],
     phase_idx: int,
     n_phases: int,
 ) -> str:
@@ -147,7 +147,7 @@ def find_reference_path(
         Wavetable name prefix.
     mod_sig : str
         Reference modulation signature (e.g. 'amp_1.00hz_0.10').
-    target_lufs : int
+    target_lufs : Union[int, float]
         Target LUFS loudness level.
     phase_idx : int
         Phase index of the reference audio.
@@ -164,20 +164,21 @@ def find_reference_path(
     FileNotFoundError
         If no matching reference audio file is found in samples_dir.
     """
-    # 1. Exact match with n_phases
-    path_exact = os.path.join(
-        samples_dir,
-        f"{wt_name}__{mod_sig}_{target_lufs}lufs__phase_{phase_idx}_{n_phases}.wav",
-    )
-    if os.path.exists(path_exact):
-        return path_exact
+    # 1. Exact match with n_phases (supporting int or float formatting)
+    for lufs_str in [f"{target_lufs}", f"{float(target_lufs):.1f}"]:
+        path_exact = os.path.join(
+            samples_dir,
+            f"{wt_name}__{mod_sig}_{lufs_str}lufs__phase_{phase_idx}_{n_phases}.wav",
+        )
+        if os.path.exists(path_exact):
+            return path_exact
 
     # 2. Glob with any n_phases
     matches = sorted(
         glob.glob(
             os.path.join(
                 samples_dir,
-                f"{wt_name}__{mod_sig}_{target_lufs}lufs__phase_{phase_idx}_*.wav",
+                f"{wt_name}__{mod_sig}*lufs*__phase_{phase_idx}_*.wav",
             )
         )
     )
@@ -186,11 +187,22 @@ def find_reference_path(
 
     # 3. Fallback to unphased file if phase_idx == 0
     if phase_idx == 0:
-        path_unphased = os.path.join(
-            samples_dir, f"{wt_name}__{mod_sig}_{target_lufs}lufs.wav"
-        )
-        if os.path.exists(path_unphased):
-            return path_unphased
+        for lufs_str in [f"{target_lufs}", f"{float(target_lufs):.1f}"]:
+            path_unphased = os.path.join(
+                samples_dir, f"{wt_name}__{mod_sig}_{lufs_str}lufs.wav"
+            )
+            if os.path.exists(path_unphased):
+                return path_unphased
+
+        matches_unphased = [
+            p
+            for p in sorted(
+                glob.glob(os.path.join(samples_dir, f"{wt_name}__{mod_sig}*lufs*.wav"))
+            )
+            if "__phase_" not in os.path.basename(p)
+        ]
+        if matches_unphased:
+            return matches_unphased[0]
 
     raise FileNotFoundError(
         f"Missing reference audio for wt='{wt_name}', ref='{mod_sig}', phase={phase_idx} in {samples_dir}"
@@ -204,7 +216,7 @@ def compute_distances(
     samples_dir: str,
     save_path: str,
     sr: int = 44100,
-    target_lufs: int = -18,
+    target_lufs: Union[int, float] = -18,
     ref_match_phase: bool = False,
 ) -> pd.DataFrame:
     """Compute distances between reference and variant audio across loss functions and save to TSV.
@@ -223,7 +235,7 @@ def compute_distances(
         Path to output TSV file.
     sr : int, default=44100
         Sample rate.
-    target_lufs : int, default=-18
+    target_lufs : Union[int, float], default=-18
         Loudness normalization level used in filenames.
     ref_match_phase : bool, default=False
         If True, compare each variant at phase_n against the reference audio with
@@ -388,35 +400,35 @@ if __name__ == "__main__":
             ),
         ),
         ("mfcc", MFCCDistance(sr=sr)),
-        # (
-        #     "scat1d",
-        #     Scat1DLoss(
-        #         shape=176400,
-        #         J=12,
-        #         Q1=8,
-        #         Q2=2,
-        #         T=None,
-        #         max_order=2,
-        #         p=2,
-        #         use_rho_log1p=True,
-        #     ),
-        # ),
-        # (
-        #     "jtfs",
-        #     JTFSTLoss(
-        #         shape=176400,
-        #         J=12,
-        #         Q1=8,
-        #         Q2=2,
-        #         J_fr=5,
-        #         Q_fr=2,
-        #         T=None,
-        #         F=None,
-        #         format_="joint",
-        #         p=2,
-        #         use_rho_log1p=True,
-        #     ),
-        # ),
+        (
+            "scat1d",
+            Scat1DLoss(
+                shape=176400,
+                J=12,
+                Q1=8,
+                Q2=2,
+                T=None,
+                max_order=2,
+                p=2,
+                use_rho_log1p=True,
+            ),
+        ),
+        (
+            "jtfs",
+            JTFSTLoss(
+                shape=176400,
+                J=12,
+                Q1=8,
+                Q2=2,
+                J_fr=5,
+                Q_fr=2,
+                T=None,
+                F=None,
+                format_="joint",
+                p=2,
+                use_rho_log1p=True,
+            ),
+        ),
         ("vggish", VGGishEmbeddingLoss(in_sr=sr)),
         ("clap", ClapEmbeddingLoss(use_cuda=False, in_sr=sr)),
         (

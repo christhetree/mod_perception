@@ -1,16 +1,15 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Union, Optional, List, Literal
+from typing import List, Literal, Optional, Union
 
-import auraloss
 import scipy
 import torch
 import torch as tr
 import torch.nn as nn
 from msclap import CLAP
 from torch import Tensor as T
-from torchaudio.transforms import Resample, MFCC
+from torchaudio.transforms import MFCC, Resample
 from transformers import EncodecModel
 
 from kymatio.torch import Scattering1D, TimeFrequencyScattering

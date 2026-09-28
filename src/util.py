@@ -2,7 +2,7 @@ import glob
 import logging
 import os
 import re
-from typing import Optional, Tuple, List, Iterator, Dict, Union, Sequence
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pyloudnorm as pyln
@@ -151,7 +151,7 @@ def parse_amount(mod_sig: str) -> Tuple[str, float, str]:
 
 
 def find_variants(
-    samples_dir: str, wt_name: str, mod_sig: str, suffix: str
+    samples_dir: str, wt_name: str, mod_sig: str, suffix: str = ""
 ) -> List[str]:
     """Find all samples of wt_name whose mod signal matches mod_sig apart from
     its amount, including mod_sig itself so that the trivial self distance is
@@ -167,6 +167,8 @@ def find_variants(
         name = re.sub(r"__phase_\d+_\d+$", "", name)
         if clean_suffix and name.endswith(clean_suffix):
             name = name[: -len(clean_suffix)]
+        # Robustly strip any trailing LUFS normalization tag (e.g. _-18lufs or _-18.0lufs)
+        name = re.sub(r"_[+-]?\d+(?:\.\d+)?lufs$", "", name)
         variant = name[len(f"{wt_name}__") :]
         try:
             variant_prefix, _, variant_unit = parse_amount(variant)
@@ -185,6 +187,7 @@ def find_variants(
             cname = cname[: -len(f"{clean_suffix}.wav")]
         elif cname.endswith(".wav"):
             cname = cname[:-4]
+        cname = re.sub(r"_[+-]?\d+(?:\.\d+)?lufs$", "", cname)
         cname = cname[len(f"{wt_name}__") :]
         try:
             _, amt, _ = parse_amount(cname)
