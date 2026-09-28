@@ -194,24 +194,3 @@ def find_variants(
 
     paths.sort(key=_sort_key)
     return paths
-
-
-def resolve_group(entry: Union[str, Sequence[str]]) -> Tuple[str, List[str]]:
-    """Normalize a wavetables entry into a (group name, wavetable names) pair. A
-    list of wavetables is averaged into a single curve and is named after the
-    common prefix of its members, e.g. ["brightness_real__...",
-    "brightness_synthetic__..."] -> "brightness". Groups of more than
-    MAX_NAMED_GROUP_SIZE wavetables are named "all"."""
-    MAX_NAMED_GROUP_SIZE = 3
-
-    if isinstance(entry, str):
-        return entry, [entry]
-    assert len(entry) > 0, "A wavetable group cannot be empty"
-    if len(entry) == 1:
-        return entry[0], list(entry)
-    if len(entry) > MAX_NAMED_GROUP_SIZE:
-        return "all", list(entry)
-    group_name = os.path.commonprefix(entry).rstrip("_")
-    if not group_name:
-        group_name = "__and__".join(entry)
-    return group_name, list(entry)

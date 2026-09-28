@@ -17,7 +17,9 @@ from typing import Literal
 import numpy as np
 import pyloudnorm
 import torch
+import torch as tr
 import torchaudio
+from torch import Tensor as T
 
 
 class FeatureExtractor(torch.nn.Module):
@@ -533,3 +535,36 @@ def flat_top_window(size, device="cpu"):
         + a4 * torch.cos(8 * torch.pi * n / (size - 1))
     )
     return window
+
+
+def compute_warmth_curve(frame_batch: T, eps: float = 1e-8) -> T:
+    """
+    warmth = odd harmonic power ratio (excluding DC)
+    """
+    fft = tr.fft.rfft(frame_batch)
+    power = tr.abs(fft) ** 2
+
+    odd_power = power[:, 1::2].sum(dim=1)
+    total_power = power[:, 1:].sum(dim=1)
+
+    warmth = odd_power / (total_power + eps)
+
+    return warmth
+
+
+def compute_richness_curve(frame_batch: T, eps: float = 1e-8) -> T:
+    fft = tr.fft.rfft(frame_batch)
+    mag = tr.abs(fft)
+    power = mag**2
+
+    freqs = tr.linspace(0, 1, power.shape[1], device=power.device)
+
+    total = power.sum(dim=1, keepdim=True) + eps
+    centroid = (power * freqs).sum(dim=1, keepdim=True) / total
+
+    spread = tr.sqrt((power * (freqs - centroid) ** 2).sum(dim=1) / total.squeeze(1))
+
+    k = 7.5
+    richness = tr.log(spread * (tr.exp(tr.tensor(k)) - 1) + 1) / k
+
+    return richness
