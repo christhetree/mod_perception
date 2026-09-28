@@ -21,7 +21,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
@@ -38,29 +38,37 @@ def filter_mushra_data(
     ref_rate_threshold: float = 0.15,
     filter_rating_range: bool = False,
     min_rating_range: float = 10.0,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Apply data cleaning and filtering heuristics for MUSHRA listening test responses.
 
     Filtering steps:
-    1. Filter out training trials ('trial_id != "training"').
+    1. Filter out training trials (`trial_id != "training"`).
     2. Filter out bad users (user-level post-screening):
        - Remove all responses from participants who rate the hidden reference
          higher than `ref_score_threshold` (10) more than `ref_rate_threshold` (15%) of the time.
     3. Identify bad trials among remaining participants:
-       - all_identical: participant gave the exact same rating to all stimuli in trial
-       - total_time < 24000 ms: trial completed in less than 24 seconds (rushed)
-       - (optional) rating_range < `min_rating_range`: difference between max and min ratings is under threshold
+       - all_identical: participant gave the exact same rating to all stimuli in trial.
+       - total_time < 24000 ms: trial completed in less than 24 seconds (rushed).
+       - (optional) rating_range < `min_rating_range`: difference between max and min ratings is under threshold.
     4. Anti-join to remove all rows associated with bad trials.
 
-    Args:
-        df: Input DataFrame containing MUSHRA listening test responses.
-        ref_score_threshold: Rating score above which a reference stimulus is considered poor.
-        ref_rate_threshold: Proportion of reference trials above threshold that triggers subject exclusion.
-        filter_rating_range: Whether to filter trials based on rating range < min_rating_range (default False).
-        min_rating_range: Minimum required difference between max and min ratings in a trial (default 10.0).
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame containing raw MUSHRA listening test responses.
+    ref_score_threshold : float, default=10.0
+        Rating score above which a reference stimulus rating is considered poor.
+    ref_rate_threshold : float, default=0.15
+        Proportion of reference trials above threshold that triggers subject exclusion.
+    filter_rating_range : bool, default=False
+        Whether to filter trials based on rating range < min_rating_range.
+    min_rating_range : float, default=10.0
+        Minimum required difference between max and min ratings in a trial.
 
-    Returns:
-        tuple[pd.DataFrame, pd.DataFrame]: (data_filtered, bad_trials)
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        Tuple of (filtered_dataframe, bad_trials_dataframe).
     """
     initial_rows = len(df)
     initial_participants = (
@@ -70,7 +78,7 @@ def filter_mushra_data(
         f"Starting data filtering: {initial_rows} rows from {initial_participants} participants."
     )
 
-    # 1. Basic setup: drop training trials
+    # 1. Drop training trials
     clean_mask = pd.Series(True, index=df.index)
     if "trial_id" in df.columns:
         clean_mask &= df["trial_id"] != "training"
@@ -78,7 +86,7 @@ def filter_mushra_data(
     data_clean = df[clean_mask].copy()
 
     # 2. Filter out bad users (rated reference > ref_score_threshold in > ref_rate_threshold of trials)
-    bad_users_list: list[dict] = []
+    bad_users_list: List[Dict] = []
     if "session_uuid" in data_clean.columns and "rating_score" in data_clean.columns:
         ref_rows = data_clean[
             data_clean.get("rating_stimulus", pd.Series(index=data_clean.index))
@@ -106,7 +114,7 @@ def filter_mushra_data(
                 ~data_clean["session_uuid"].isin(bad_user_ids)
             ].copy()
 
-    # 3. Identify bad trials among remaining participants (grouped by session_uuid and trial_id)
+    # 3. Identify bad trials among remaining participants
     if not all(
         col in data_clean.columns
         for col in ["session_uuid", "trial_id", "rating_score"]
@@ -154,7 +162,9 @@ def filter_mushra_data(
         "all_identical": int(crit_identical.sum()),
     }
     if filter_rating_range:
-        criteria_counts[f"rating_range < {min_rating_range:.0f}"] = int(crit_range.sum())
+        criteria_counts[f"rating_range < {min_rating_range:.0f}"] = int(
+            crit_range.sum()
+        )
     bad_trials.attrs["criteria_counts"] = criteria_counts
     bad_trials.attrs["rating_range_filtered"] = filter_rating_range
 
@@ -182,15 +192,33 @@ def filter_mushra_data(
 
 def filter_and_save(
     input_path: Union[str, Path],
-    output_path: Union[str, Path] | None = None,
+    output_path: Optional[Union[str, Path]] = None,
     ref_score_threshold: float = 10.0,
     ref_rate_threshold: float = 0.15,
     filter_rating_range: bool = False,
     min_rating_range: float = 10.0,
-) -> tuple[pd.DataFrame, pd.DataFrame, Path]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, Path]:
     """Filter raw MUSHRA listening test data, save the filtered dataset to TSV, and report removals.
 
-    Prints granular breakdown of users and trials removed across quality criteria and count of complete users.
+    Parameters
+    ----------
+    input_path : Union[str, Path]
+        Path to raw responses TSV or CSV file.
+    output_path : Optional[Union[str, Path]], default=None
+        Path to save filtered TSV dataset. If None, saves as `{input_stem}_filtered.tsv`.
+    ref_score_threshold : float, default=10.0
+        Threshold above which a reference rating score is deemed failing.
+    ref_rate_threshold : float, default=0.15
+        Failure rate threshold triggering participant exclusion.
+    filter_rating_range : bool, default=False
+        Whether to filter trials where rating range is under min_rating_range.
+    min_rating_range : float, default=10.0
+        Rating range threshold for trial exclusion.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame, Path]
+        Tuple of (filtered_dataframe, bad_trials_dataframe, output_file_path).
     """
     input_path = Path(input_path).expanduser().resolve()
     sep = "\t" if input_path.suffix == ".tsv" else ","
@@ -301,7 +329,7 @@ def filter_and_save(
         print("    Breakdown by criterion (trials may match multiple):")
         for criterion, count in criteria_counts.items():
             print(f"      * {criterion:<22}: {count} trials")
-    print(f"\nFinal dataset:")
+    print("\nFinal dataset:")
     print(
         f"  - Initial dataset:  {initial_trials} trials across {initial_users} users ({len(df_raw)} rows)"
     )
@@ -317,7 +345,8 @@ def filter_and_save(
     return data_filtered, bad_trials, out_file
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Command-line entry point to clean and quality-filter MUSHRA listening test data."""
     parser = argparse.ArgumentParser(
         description="Preprocess and quality-filter MUSHRA listening test data."
     )
@@ -325,13 +354,13 @@ if __name__ == "__main__":
         "data_path",
         nargs="?",
         default=os.path.join(DATA_DIR, "listening_test_responses_device_filtered.tsv"),
-        help=f"Path to input MUSHRA data file (tsv or csv)",
+        help="Path to input MUSHRA data file (tsv or csv) (default: {DATA_DIR}/listening_test_responses_device_filtered.tsv)",
     )
     parser.add_argument(
         "-o",
         "--output",
         default=os.path.join(OUT_DIR, "listening_test_responses_postprocessed.tsv"),
-        help="Path to save the filtered TSV file",
+        help="Path to save the filtered TSV file (default: {OUT_DIR}/listening_test_responses_postprocessed.tsv)",
     )
     parser.add_argument(
         "--ref-score-threshold",
@@ -374,48 +403,5 @@ if __name__ == "__main__":
     )
 
 
-# ======================================================================
-# DATA FILTERING SUMMARY
-# ======================================================================
-#
-# Users removed: 23 (of 51 initial participants)
-#   - Excluded for rating reference > 10 in > 15% of trials (23 users):
-#       * 029d0004-b12b-4345-b48b-d032e35dc81c: 7/18 trials (38.9%)
-#       * 04607afd-671d-4010-a181-d94ca907f1fd: 5/18 trials (27.8%)
-#       * 0f3c45e3-38d0-46dd-9dab-e8388e87a0ed: 4/18 trials (22.2%)
-#       * 0f4851c3-d8a6-43ba-bfc7-21dde6edc2fc: 5/18 trials (27.8%)
-#       * 14f6fc68-9a27-40e5-98ab-b2d1e38ab12e: 3/18 trials (16.7%)
-#       * 16bcc0c4-b9ac-4a57-9517-f12fe835be29: 8/18 trials (44.4%)
-#       * 18ccb701-2df0-42ce-8980-437612e0bb82: 3/18 trials (16.7%)
-#       * 204caf3b-55cb-47a9-920b-cc96988bcaa4: 18/18 trials (100.0%)
-#       * 4ce9d4e2-0786-4f01-8a82-dfd08587ed30: 5/18 trials (27.8%)
-#       * 4ea66deb-59b1-4e1e-8988-169b5ea04e23: 5/18 trials (27.8%)
-#       * 6090cde1-199f-446f-8be0-5af430a526c5: 13/18 trials (72.2%)
-#       * 61a2b24f-57b8-43dc-b6d1-d27febadeaaa: 4/18 trials (22.2%)
-#       * 84709dd5-605c-4440-85f6-00fc36924a1c: 3/18 trials (16.7%)
-#       * 8ab8c143-54ca-4b1a-8035-64c8f1ca9c3a: 8/18 trials (44.4%)
-#       * 92d30785-45fe-49ae-8ba1-2d0be1045a4b: 12/18 trials (66.7%)
-#       * a75817c8-b3ec-47e0-a505-cf1c9a2101c3: 7/18 trials (38.9%)
-#       * aad8d2a2-407f-46fe-91d6-6cf0bca30b7f: 6/18 trials (33.3%)
-#       * acf1bde0-2873-4d0b-b1dc-c0896653720c: 3/18 trials (16.7%)
-#       * bfb9dd35-eb51-4635-9cbd-ddf058f2d183: 18/18 trials (100.0%)
-#       * c7deccbf-b868-4f08-a9ec-6dbfc8c7f3e2: 4/18 trials (22.2%)
-#       * cf044467-0a55-49a3-8b71-4e85eced0577: 7/18 trials (38.9%)
-#       * d6cf2853-febf-4e8f-89f4-2e598f9637af: 17/18 trials (94.4%)
-#       * ff7d76b3-8310-47a8-aa3c-5ebcea2d1cf9: 8/18 trials (44.4%)
-#
-# Trials removed: 474
-#   - Training trials excluded:                     51
-#   - Trials from excluded users:                   414
-#   - Bad quality trials excluded (retained users): 9
-#     Breakdown by criterion (trials may match multiple):
-#       * total_time < 24000 ms : 7 trials
-#       * all_identical         : 2 trials
-#
-# Final dataset:
-#   - Initial dataset:  969 trials across 51 users (4845 rows)
-#   - Filtered dataset: 495 trials across 28 users (2475 rows)
-#   - Users with complete data (18 trials): 23 of 28 (82.1%)
-# ======================================================================
-
-# Also removed 3 laptop speaker users
+if __name__ == "__main__":
+    main()

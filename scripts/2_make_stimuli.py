@@ -451,17 +451,17 @@ def main() -> None:
     parser.add_argument(
         "--wavetable-dir",
         default=os.path.join(DATA_DIR, "wavetables"),
-        help="Directory containing wavetable .pt and .npy files (default: {DATA_DIR}/wavetables)",
+        help=f"Directory containing wavetable .pt and .npy files (default: {DATA_DIR}/wavetables)",
     )
     parser.add_argument(
         "--stimuli-dir",
         default=os.path.join(OUT_DIR, "stimuli"),
-        help="Directory to save generated WAV stimuli (default: {OUT_DIR}/stimuli)",
+        help=f"Directory to save generated WAV stimuli (default: {OUT_DIR}/stimuli)",
     )
     parser.add_argument(
         "--figures-dir",
         default=os.path.join(OUT_DIR, "figures"),
-        help="Directory to save modulation signal plots (default: {OUT_DIR}/figures)",
+        help=f"Directory to save modulation signal plots (default: {OUT_DIR}/figures)",
     )
     parser.add_argument(
         "--sr",

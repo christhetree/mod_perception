@@ -177,7 +177,7 @@ def main() -> None:
     parser.add_argument(
         "--wavetable-dir",
         default=os.path.join(DATA_DIR, "wavetables"),
-        help="Directory containing wavetable .pt files (default: ../../data/wavetables)",
+        help=f"Directory containing wavetable .pt files (default: {DATA_DIR}/wavetables)",
     )
     parser.add_argument(
         "--save-dir",

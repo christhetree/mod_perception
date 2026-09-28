@@ -11,7 +11,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -47,16 +47,26 @@ __all__ = [
     "compute_normality_tests",
     "prepare_anova_dataframe",
     "run_all_anovas",
+    "main",
 ]
 
 
-def get_asterisks(p_val: float) -> str:
+def get_asterisks(p_val: Optional[float]) -> str:
     """Return significance asterisks based on p-value.
 
-    ***: p < 0.001
-    **:  p < 0.01
-    *:   p < 0.05
-    '':  p >= 0.05
+    Parameters
+    ----------
+    p_val : Optional[float]
+        The p-value to evaluate.
+
+    Returns
+    -------
+    str
+        Significance marker:
+        - '***' for p < 0.001
+        - '**' for p < 0.01
+        - '*' for p < 0.05
+        - '' for p >= 0.05 or NaN/None.
     """
     if p_val is None or pd.isna(p_val):
         return ""
@@ -71,13 +81,27 @@ def get_asterisks(p_val: float) -> str:
 
 def add_significance_column(
     df: pd.DataFrame,
-    p_col: str | None = None,
+    p_col: Optional[str] = None,
     col_name: str = "sig",
 ) -> pd.DataFrame:
-    """Add a column with *, **, or *** indicating < 0.05, 0.01, 0.001 respectively.
+    """Add a significance column with asterisks based on p-values.
 
     Prefers corrected p-values ('p_corr', 'p-corr', 'p_GG_corr', 'p_adj', 'p_adjust', 'p_bonf'),
     falling back to uncorrected p-values ('p_unc', 'p-unc', 'p') if no corrected column exists.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame containing statistical test results.
+    p_col : Optional[str], default=None
+        Name of p-value column to evaluate. If None, auto-detects from standard column names.
+    col_name : str, default='sig'
+        Name of the new significance column to insert.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of the DataFrame with the significance column inserted.
     """
     df = df.copy()
     if p_col is None:
@@ -110,7 +134,24 @@ def add_pairwise_means_and_diff(
     dv: str,
     within: str,
 ) -> pd.DataFrame:
-    """Add mean(A), mean(B), and diff (mean(A) - mean(B)) columns to pairwise test DataFrame."""
+    """Add mean(A), mean(B), and diff (mean(A) - mean(B)) columns to a pairwise test DataFrame.
+
+    Parameters
+    ----------
+    pw_df : pd.DataFrame
+        Pairwise comparison test results containing columns 'A' and 'B'.
+    data : pd.DataFrame
+        Source data containing the dependent variable and condition factors.
+    dv : str
+        Name of the dependent variable column.
+    within : str
+        Factor column name that indexes conditions 'A' and 'B'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with 'mean(A)', 'mean(B)', and 'diff' columns inserted after column 'B'.
+    """
     pw_df = pw_df.copy()
     means = data.groupby(within)[dv].mean().to_dict()
     mean_a = pw_df["A"].map(means)
@@ -129,16 +170,37 @@ def compute_rm_anova_with_effect_sizes(
     df: pd.DataFrame,
     dv: str,
     subject: str,
-    within: list[str],
+    within: Sequence[str],
 ) -> pd.DataFrame:
     """Compute Repeated-Measures ANOVA for N within-subject factors with effect sizes.
 
-    Computes:
-    - Sums of Squares (SS) and Mean Squares (MS) for effects and errors
-    - F-statistic and uncorrected p-value (p_unc)
-    - Partial eta-squared (np2 = SS_effect / (SS_effect + SS_error))
-    - Generalized eta-squared (ng2 = SS_effect / (SS_effect + SS_subject + sum(SS_errors)))
+    Calculates:
+    - Sums of Squares (SS) and Mean Squares (MS) for effects and errors.
+    - F-statistic and uncorrected p-value (p_unc).
+    - Partial eta-squared: np2 = SS_effect / (SS_effect + SS_error).
+    - Generalized eta-squared: ng2 = SS_effect / (SS_effect + SS_subject + sum(SS_errors))
       following Olejnik & Algina (2003) and Bakeman (2005) for fully within-subject designs.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input data aggregated to subject cell means.
+    dv : str
+        Dependent variable column name.
+    subject : str
+        Subject identifier column name.
+    within : Sequence[str]
+        List of within-subject factor column names.
+
+    Returns
+    -------
+    pd.DataFrame
+        ANOVA summary table with columns: Source, SS, DF1, DF2, MS, F, p_unc, np2, ng2, sig.
+
+    Raises
+    ------
+    ValueError
+        If independent variables are collinear.
     """
     y = df[dv].values
 
@@ -227,13 +289,29 @@ def compute_rm_anova_with_effect_sizes(
     return add_significance_column(table[col_order])
 
 
-def _resolve_input_col(df: pd.DataFrame, dv: str, input_col: str | None = None) -> str:
-    """Resolve the column to aggregate or measure.
+def _resolve_input_col(
+    df: pd.DataFrame, dv: str, input_col: Optional[str] = None
+) -> str:
+    """Resolve the column name to aggregate or measure.
 
-    If input_col is explicitly specified, returns it (raising KeyError if missing).
-    Otherwise, defaults to 'rating_score' if present in df.
-    Otherwise, falls back to dv if present in df.
-    Raises KeyError if neither is found in df.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame.
+    dv : str
+        Target dependent variable column name.
+    input_col : Optional[str], default=None
+        Explicit input column override.
+
+    Returns
+    -------
+    str
+        Resolved column name.
+
+    Raises
+    ------
+    KeyError
+        If neither `input_col`, 'rating_score', nor `dv` is found in `df`.
     """
     if input_col is not None:
         if input_col not in df.columns:
@@ -253,10 +331,23 @@ def _resolve_input_col(df: pd.DataFrame, dv: str, input_col: str | None = None) 
 def _filter_balanced_subjects(
     df: pd.DataFrame, subject_col: str, group_cols: Sequence[str], dv: str
 ) -> pd.DataFrame:
-    """Filter to subjects that have complete and balanced data across all within-subject cells.
+    """Filter dataset to subjects with complete and balanced data across all within-subject cells.
 
-    Verifies that each retained subject has exactly 1 valid observation per
-    unique combination of group_cols across the full within-subject factorial design.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame of cell means or raw observations.
+    subject_col : str
+        Subject identifier column.
+    group_cols : Sequence[str]
+        Factor column names forming the factorial design cells.
+    dv : str
+        Dependent variable column name.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame retaining only subjects with exactly 1 observation per factorial cell.
     """
     df_valid = df.dropna(subset=[*group_cols, dv])
     if df_valid.empty:
@@ -291,10 +382,31 @@ def _prepare_balanced_cell_means(
     subject: str,
     within: Sequence[str],
     dv: str = "mean_rating",
-    input_col: str | None = None,
-    drop_na_cols: Sequence[str] | None = None,
+    input_col: Optional[str] = None,
+    drop_na_cols: Optional[Sequence[str]] = None,
 ) -> pd.DataFrame:
-    """Aggregate ratings to cell means per subject and filter to balanced complete cases."""
+    """Aggregate ratings to cell means per subject and filter to balanced complete cases.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input observations DataFrame.
+    subject : str
+        Subject column name.
+    within : Sequence[str]
+        List of within-subject factor column names.
+    dv : str, default='mean_rating'
+        Output dependent variable column name.
+    input_col : Optional[str], default=None
+        Input column to average.
+    drop_na_cols : Optional[Sequence[str]], default=None
+        Columns to check for missing values before aggregation.
+
+    Returns
+    -------
+    pd.DataFrame
+        Aggregated and balanced cell means DataFrame.
+    """
     in_col = _resolve_input_col(df, dv, input_col)
     subset_df = df.dropna(subset=drop_na_cols) if drop_na_cols else df
     cell_means = (
@@ -310,10 +422,31 @@ def _run_single_pairwise_posthoc(
     within: str,
     dv: str = "mean_rating",
     subject: str = "session_uuid",
-    input_col: str | None = None,
+    input_col: Optional[str] = None,
     drop_reference: bool = False,
 ) -> pd.DataFrame:
-    """Run pairwise t-tests with Bonferroni correction on balanced cell means for a single factor."""
+    """Run pairwise t-tests with Bonferroni correction on balanced cell means for a single factor.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataset.
+    within : str
+        Within-subject factor column name.
+    dv : str, default='mean_rating'
+        Dependent variable column name.
+    subject : str, default='session_uuid'
+        Subject identifier column name.
+    input_col : Optional[str], default=None
+        Input rating column name to aggregate.
+    drop_reference : bool, default=False
+        Whether to exclude rows where `within == 'reference'`.
+
+    Returns
+    -------
+    pd.DataFrame
+        Pairwise comparison table with Bonferroni-adjusted p-values and effect sizes.
+    """
     sub_df = (
         df[df[within] != "reference"].copy()
         if drop_reference and "reference" in df[within].values
@@ -339,7 +472,28 @@ def _run_sliced_pairwise_tests(
     subject: str,
     padjust: str = "bonf",
 ) -> pd.DataFrame:
-    """Run pairwise tests on slices of a DataFrame, adding slice identifier, means, diffs, and sig."""
+    """Run pairwise tests on slices of a DataFrame, adding slice identifier, means, diffs, and sig.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input data table.
+    dv : str
+        Dependent variable column name.
+    within : str
+        Within-subject factor to compare.
+    slice_col : str
+        Grouping column to slice the dataset on.
+    subject : str
+        Subject identifier column name.
+    padjust : str, default='bonf'
+        P-value correction method (e.g. 'bonf', 'holm', 'fdr_bh').
+
+    Returns
+    -------
+    pd.DataFrame
+        Concatenated DataFrame of all sliced pairwise comparisons.
+    """
     slices = []
     for val in sorted(df[slice_col].unique()):
         slice_df = df[df[slice_col] == val]
@@ -358,9 +512,7 @@ def _run_sliced_pairwise_tests(
     res = pd.concat(slices, ignore_index=True)
     if "p_corr" not in res.columns and "p_unc" in res.columns:
         p_corr_idx = res.columns.get_loc("p_unc") + 1
-        res.insert(
-            p_corr_idx, "p_corr", np.minimum(1.0, res["p_unc"] * len(res))
-        )
+        res.insert(p_corr_idx, "p_corr", np.minimum(1.0, res["p_unc"] * len(res)))
         res.insert(p_corr_idx + 1, "p_adjust", padjust)
     return add_significance_column(res)
 
@@ -369,13 +521,28 @@ def compute_anova_4way_unpooled(
     df: pd.DataFrame,
     dv: str = "mean_rating",
     subject: str = "session_uuid",
-    input_col: str | None = None,
+    input_col: Optional[str] = None,
 ) -> pd.DataFrame:
     """4-way Repeated-Measures ANOVA (unpooled): modulation x feature x source x rating_stimulus (4 amounts).
 
     Uses all 4 individual stimulus condition ratings directly (DF1=3 for amount), without
     dichotomizing into Low vs High groups.
-    Returns a DataFrame with F, p_unc, sig, np2 (partial eta-squared), and ng2 (generalized eta-squared).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prepared MUSHRA listening test DataFrame.
+    dv : str, default='mean_rating'
+        Dependent variable name.
+    subject : str, default='session_uuid'
+        Subject identifier column name.
+    input_col : Optional[str], default=None
+        Raw rating input column to aggregate.
+
+    Returns
+    -------
+    pd.DataFrame
+        Repeated-measures ANOVA results table.
     """
     log.info(
         "Computing 4-way Repeated-Measures ANOVA (unpooled: modulation x feature x source x rating_stimulus)..."
@@ -384,9 +551,11 @@ def compute_anova_4way_unpooled(
     mod_avg_bal = _prepare_balanced_cell_means(df, subject, within, dv, input_col)
 
     # Save intermediate balanced data to .tsv if needed
-    out_dir = Path(__file__).resolve().parent.parent / "out"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    mod_avg_bal.to_csv(out_dir / "anova_4way_unpooled_balanced_data.tsv", sep="\t", index=False)
+    mod_avg_bal.to_csv(
+        os.path.join(OUT_DIR, "anova_4way_unpooled_balanced_data.tsv"),
+        sep="\t",
+        index=False,
+    )
 
     return compute_rm_anova_with_effect_sizes(
         mod_avg_bal, dv=dv, subject=subject, within=within
@@ -397,14 +566,25 @@ def compute_anova_4way_pooled(
     df: pd.DataFrame,
     dv: str = "mean_rating",
     subject: str = "session_uuid",
-    input_col: str | None = None,
+    input_col: Optional[str] = None,
 ) -> pd.DataFrame:
     """4-way Repeated-Measures ANOVA (pooled): modulation x feature x source x amount_group (Low vs High).
 
-    Equivalent to R:
-        anova_data_4way <- plot_data_grouped %>% group_by(session_uuid, modulation, feature, source, amount_group) ...
-        anova_results_4way
-    Returns a DataFrame with F, p_unc, sig, np2 (partial eta-squared), and ng2 (generalized eta-squared).
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prepared MUSHRA listening test DataFrame.
+    dv : str, default='mean_rating'
+        Dependent variable name.
+    subject : str, default='session_uuid'
+        Subject identifier column name.
+    input_col : Optional[str], default=None
+        Raw rating input column to aggregate.
+
+    Returns
+    -------
+    pd.DataFrame
+        Repeated-measures ANOVA results table.
     """
     log.info(
         "Computing 4-way Repeated-Measures ANOVA (pooled: modulation x feature x source x amount_group)..."
@@ -423,13 +603,25 @@ def compute_anova_3way(
     df: pd.DataFrame,
     dv: str = "mean_rating",
     subject: str = "session_uuid",
-    input_col: str | None = None,
+    input_col: Optional[str] = None,
 ) -> pd.DataFrame:
     """3-way Repeated-Measures ANOVA: modulation x feature x source.
 
-    Equivalent to R:
-        mod_avg %>% anova_test(dv = mean_rating, wid = session_uuid, within = c(modulation, feature, source))
-    Returns a DataFrame with F, p_unc, sig, np2 (partial eta-squared), and ng2 (generalized eta-squared).
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prepared MUSHRA listening test DataFrame.
+    dv : str, default='mean_rating'
+        Dependent variable name.
+    subject : str, default='session_uuid'
+        Subject identifier column name.
+    input_col : Optional[str], default=None
+        Raw rating input column to aggregate.
+
+    Returns
+    -------
+    pd.DataFrame
+        Repeated-measures ANOVA results table.
     """
     log.info(
         "Computing 3-way Repeated-Measures ANOVA (modulation x feature x source)..."
@@ -446,16 +638,25 @@ def compute_anova_2way_modulation_feature(
     df: pd.DataFrame,
     dv: str = "mean_rating",
     subject: str = "session_uuid",
-    input_col: str | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+    input_col: Optional[str] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """2-way Repeated-Measures ANOVA: modulation x feature.
 
-    Equivalent to R:
-        mod_avg_2way %>% anova_test(dv = mean_rating, wid = session_uuid, within = c(modulation, feature))
-    Computes ANOVA using both Pingouin (pg.rm_anova) and the custom helper function
-    (compute_rm_anova_with_effect_sizes) for comparison.
-    Returns:
-        tuple of (aov_pingouin, aov_helper)
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prepared MUSHRA listening test DataFrame.
+    dv : str, default='mean_rating'
+        Dependent variable name.
+    subject : str, default='session_uuid'
+        Subject identifier column name.
+    input_col : Optional[str], default=None
+        Raw rating input column to aggregate.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        Tuple of (pingouin_anova_result, statsmodels_anova_result).
     """
     log.info("Computing 2-way Repeated-Measures ANOVA (modulation x feature)...")
     within = ["modulation", "feature"]
@@ -480,16 +681,25 @@ def compute_anova_2way_modulation_amount(
     df: pd.DataFrame,
     dv: str = "mean_rating",
     subject: str = "session_uuid",
-    input_col: str | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+    input_col: Optional[str] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """2-way Repeated-Measures ANOVA: modulation x amount_group (Low vs High).
 
-    Equivalent to R:
-        anova_results_2way <- mod_avg_2way %>% anova_test(dv = mean_rating, wid = session_uuid, within = c(modulation, amount_group))
-    Computes ANOVA using both Pingouin (pg.rm_anova) and the custom helper function
-    (compute_rm_anova_with_effect_sizes) for comparison.
-    Returns:
-        tuple of (aov_pingouin, aov_helper)
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prepared MUSHRA listening test DataFrame.
+    dv : str, default='mean_rating'
+        Dependent variable name.
+    subject : str, default='session_uuid'
+        Subject identifier column name.
+    input_col : Optional[str], default=None
+        Raw rating input column to aggregate.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        Tuple of (pingouin_anova_result, statsmodels_anova_result).
     """
     log.info("Computing 2-way Repeated-Measures ANOVA (modulation x amount_group)...")
     within = ["modulation", "amount_group"]
@@ -516,14 +726,25 @@ def compute_pairwise_posthocs(
     df: pd.DataFrame,
     dv: str = "mean_rating",
     subject: str = "session_uuid",
-    input_col: str | None = None,
-) -> dict[str, pd.DataFrame]:
-    """Pairwise post-hoc paired t-tests with Bonferroni correction.
+    input_col: Optional[str] = None,
+) -> Dict[str, pd.DataFrame]:
+    """Pairwise post-hoc paired t-tests with Bonferroni correction across main factors.
 
-    Equivalent to R:
-        pairwise_t_test(mean_rating ~ modulation, paired = TRUE, p.adjust.method = "bonferroni")
-        pairwise_t_test(mean_rating ~ feature, paired = TRUE, p.adjust.method = "bonferroni")
-        pairwise_t_test(mean_rating ~ rating_stimulus, paired = TRUE, p.adjust.method = "bonferroni")
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prepared MUSHRA listening test DataFrame.
+    dv : str, default='mean_rating'
+        Dependent variable name.
+    subject : str, default='session_uuid'
+        Subject identifier column name.
+    input_col : Optional[str], default=None
+        Raw rating input column to aggregate.
+
+    Returns
+    -------
+    Dict[str, pd.DataFrame]
+        Dictionary mapping factor names ('modulation', 'feature', 'amount') to pairwise comparison DataFrames.
     """
     log.info("Computing pairwise post-hoc tests (Bonferroni adjusted)...")
     in_col = _resolve_input_col(df, dv, input_col)
@@ -544,7 +765,12 @@ def compute_pairwise_posthocs(
     )
     if amount_col is not None:
         pw_amount = _run_single_pairwise_posthoc(
-            df, amount_col, dv=dv, subject=subject, input_col=in_col, drop_reference=True
+            df,
+            amount_col,
+            dv=dv,
+            subject=subject,
+            input_col=in_col,
+            drop_reference=True,
         )
         results["amount"] = pw_amount
         results["rating_stimulus"] = pw_amount
@@ -556,8 +782,8 @@ def compute_simple_effects(
     df: pd.DataFrame,
     dv: str = "mean_rating",
     subject: str = "session_uuid",
-    input_col: str | None = None,
-) -> dict[str, pd.DataFrame]:
+    input_col: Optional[str] = None,
+) -> Dict[str, pd.DataFrame]:
     """Break down significant two-way interactions via simple main effects analysis.
 
     Decomposes:
@@ -567,9 +793,21 @@ def compute_simple_effects(
        - Pairwise comparisons of modulation (amp vs freq vs reg) within each rating_stimulus condition.
        - Pairwise comparisons across rating_stimulus conditions within each modulation type.
 
-    Returns:
-        dict mapping contrast names to DataFrames of pairwise t-test results (Bonferroni adjusted)
-        including mean(A), mean(B), and diff (mean(A) - mean(B)).
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prepared MUSHRA listening test DataFrame.
+    dv : str, default='mean_rating'
+        Dependent variable name.
+    subject : str, default='session_uuid'
+        Subject identifier column name.
+    input_col : Optional[str], default=None
+        Raw rating input column to aggregate.
+
+    Returns
+    -------
+    Dict[str, pd.DataFrame]
+        Dictionary mapping interaction contrast names to DataFrames of Bonferroni-adjusted pairwise comparisons.
     """
     log.info(
         "Computing simple effects for significant two-way interactions (Bonferroni adjusted)..."
@@ -602,10 +840,18 @@ def compute_simple_effects(
             df_amount, subject, ["modulation", amount_col], dv=dv, input_col=in_col
         )
         results["modulation_within_stimulus"] = _run_sliced_pairwise_tests(
-            sub_mr_bal, dv=dv, within="modulation", slice_col=amount_col, subject=subject
+            sub_mr_bal,
+            dv=dv,
+            within="modulation",
+            slice_col=amount_col,
+            subject=subject,
         )
         results["stimulus_within_modulation"] = _run_sliced_pairwise_tests(
-            sub_mr_bal, dv=dv, within=amount_col, slice_col="modulation", subject=subject
+            sub_mr_bal,
+            dv=dv,
+            within=amount_col,
+            slice_col="modulation",
+            subject=subject,
         )
 
     return results
@@ -613,15 +859,30 @@ def compute_simple_effects(
 
 def compute_normality_tests(
     df: pd.DataFrame,
-    group_by: Sequence[str] | None = None,
+    group_by: Optional[Sequence[str]] = None,
     dv: str = "mean_rating",
     subject: str = "session_uuid",
-    input_col: str | None = None,
+    input_col: Optional[str] = None,
 ) -> pd.DataFrame:
     """Shapiro-Wilk test for normality across factor combinations.
 
-    Equivalent to R:
-        shapiro.test(mean_rating)
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prepared MUSHRA listening test DataFrame.
+    group_by : Optional[Sequence[str]], default=None
+        Factors to group by (default: ['modulation', 'feature', 'source']).
+    dv : str, default='mean_rating'
+        Dependent variable name.
+    subject : str, default='session_uuid'
+        Subject identifier column name.
+    input_col : Optional[str], default=None
+        Raw rating input column to aggregate.
+
+    Returns
+    -------
+    pd.DataFrame
+        Normality test statistics per factor cell.
     """
     if group_by is None:
         group_by = ["modulation", "feature", "source"]
@@ -655,7 +916,7 @@ def compute_normality_tests(
 
 
 def prepare_anova_dataframe(
-    data_source: str | Path | pd.DataFrame,
+    data_source: Union[str, Path, pd.DataFrame],
     exclude_reference: bool = True,
 ) -> pd.DataFrame:
     """Load and prepare MUSHRA listening test data for ANOVA analysis.
@@ -664,6 +925,18 @@ def prepare_anova_dataframe(
     - Excludes reference stimulus rows if exclude_reference is True.
     - Extracts factor columns 'modulation', 'feature', 'source' from 'trial_id' if missing.
     - Maps conditions to 'amount_group' (Low: condition_a/b, High: condition_c/d) if missing.
+
+    Parameters
+    ----------
+    data_source : Union[str, Path, pd.DataFrame]
+        Input file path or DataFrame.
+    exclude_reference : bool, default=True
+        Whether to exclude reference stimulus rows.
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned DataFrame ready for ANOVA factorial analysis.
     """
     if isinstance(data_source, (str, Path)):
         file_path = Path(data_source).expanduser().resolve()
@@ -699,16 +972,34 @@ def prepare_anova_dataframe(
 
 
 def run_all_anovas(
-    data_source: str | Path | pd.DataFrame,
+    data_source: Union[str, Path, pd.DataFrame],
     dv: str = "mean_rating",
-    input_col: str | None = None,
-):
-    """Execute all ANOVA analyses and print summaries.
+    input_col: Optional[str] = None,
+    include_lower_order: bool = False,
+) -> Dict[str, Any]:
+    """Execute ANOVA analyses and print summaries to console.
 
     Assumes the input TSV/CSV dataset has already been cleaned and quality-filtered.
     Extracts within-subject factors (modulation, feature, source, amount_group) if not already present.
+
+    Parameters
+    ----------
+    data_source : Union[str, Path, pd.DataFrame]
+        Input data file path or DataFrame.
+    dv : str, default='mean_rating'
+        Dependent variable name.
+    input_col : Optional[str], default=None
+        Raw rating input column name to aggregate.
+    include_lower_order : bool, default=False
+        Whether to also compute and display pooled 4-way, 3-way, and 2-way ANOVAs.
+
+    Returns
+    -------
+    Dict[str, Any]
+        Dictionary containing computed ANOVA, post-hoc, and simple effects tables.
     """
     df = prepare_anova_dataframe(data_source, exclude_reference=True)
+    results: Dict[str, Any] = {}
 
     log.info("\n" + "=" * 80)
     log.info(
@@ -717,50 +1008,56 @@ def run_all_anovas(
     log.info("=" * 80)
     aov_4way_unpooled = compute_anova_4way_unpooled(df, dv=dv, input_col=input_col)
     log.info("\n" + aov_4way_unpooled.to_string(index=False))
+    results["anova_4way_unpooled"] = aov_4way_unpooled
 
-    # log.info("\n" + "=" * 80)
-    # log.info(
-    #     " 2. FOUR-WAY REPEATED MEASURES ANOVA (modulation x feature x source x amount_group [POOLED])"
-    # )
-    # log.info("=" * 80)
-    # aov_4way = compute_anova_4way_pooled(df, dv=dv, input_col=input_col)
-    # log.info("\n" + aov_4way.to_string(index=False))
-    #
-    # log.info("\n" + "=" * 80)
-    # log.info(" 3. THREE-WAY REPEATED MEASURES ANOVA (modulation x feature x source)")
-    # log.info("=" * 80)
-    # aov_3way = compute_anova_3way(df, dv=dv, input_col=input_col)
-    # log.info("\n" + aov_3way.to_string(index=False))
-    #
-    # log.info("\n" + "=" * 80)
-    # log.info(" 4. TWO-WAY REPEATED MEASURES ANOVA (modulation x feature)")
-    # log.info("=" * 80)
-    # aov_2way_mf_pg, aov_2way_mf_helper = compute_anova_2way_modulation_feature(
-    #     df, dv=dv, input_col=input_col
-    # )
-    # log.info(
-    #     "\n[Pingouin (pg.rm_anova, detailed=True)]:\n"
-    #     + aov_2way_mf_pg.to_string(index=False)
-    # )
-    # log.info(
-    #     "\n[Helper Function (compute_rm_anova_with_effect_sizes)]:\n"
-    #     + aov_2way_mf_helper.to_string(index=False)
-    # )
-    #
-    # log.info("\n" + "=" * 80)
-    # log.info(" 5. TWO-WAY REPEATED MEASURES ANOVA (modulation x amount_group)")
-    # log.info("=" * 80)
-    # aov_2way_ma_pg, aov_2way_ma_helper = compute_anova_2way_modulation_amount(
-    #     df, dv=dv, input_col=input_col
-    # )
-    # log.info(
-    #     "\n[Pingouin (pg.rm_anova, detailed=True)]:\n"
-    #     + aov_2way_ma_pg.to_string(index=False)
-    # )
-    # log.info(
-    #     "\n[Helper Function (compute_rm_anova_with_effect_sizes)]:\n"
-    #     + aov_2way_ma_helper.to_string(index=False)
-    # )
+    if include_lower_order:
+        log.info("\n" + "=" * 80)
+        log.info(
+            " 2. FOUR-WAY REPEATED MEASURES ANOVA (modulation x feature x source x amount_group [POOLED])"
+        )
+        log.info("=" * 80)
+        aov_4way_pooled = compute_anova_4way_pooled(df, dv=dv, input_col=input_col)
+        log.info("\n" + aov_4way_pooled.to_string(index=False))
+        results["anova_4way_pooled"] = aov_4way_pooled
+
+        log.info("\n" + "=" * 80)
+        log.info(" 3. THREE-WAY REPEATED MEASURES ANOVA (modulation x feature x source)")
+        log.info("=" * 80)
+        aov_3way = compute_anova_3way(df, dv=dv, input_col=input_col)
+        log.info("\n" + aov_3way.to_string(index=False))
+        results["anova_3way"] = aov_3way
+
+        log.info("\n" + "=" * 80)
+        log.info(" 4. TWO-WAY REPEATED MEASURES ANOVA (modulation x feature)")
+        log.info("=" * 80)
+        aov_2way_mf_pg, aov_2way_mf_helper = compute_anova_2way_modulation_feature(
+            df, dv=dv, input_col=input_col
+        )
+        log.info(
+            "\n[Pingouin (pg.rm_anova, detailed=True)]:\n"
+            + aov_2way_mf_pg.to_string(index=False)
+        )
+        log.info(
+            "\n[Helper Function (compute_rm_anova_with_effect_sizes)]:\n"
+            + aov_2way_mf_helper.to_string(index=False)
+        )
+        results["anova_2way_modulation_feature"] = (aov_2way_mf_pg, aov_2way_mf_helper)
+
+        log.info("\n" + "=" * 80)
+        log.info(" 5. TWO-WAY REPEATED MEASURES ANOVA (modulation x amount_group)")
+        log.info("=" * 80)
+        aov_2way_ma_pg, aov_2way_ma_helper = compute_anova_2way_modulation_amount(
+            df, dv=dv, input_col=input_col
+        )
+        log.info(
+            "\n[Pingouin (pg.rm_anova, detailed=True)]:\n"
+            + aov_2way_ma_pg.to_string(index=False)
+        )
+        log.info(
+            "\n[Helper Function (compute_rm_anova_with_effect_sizes)]:\n"
+            + aov_2way_ma_helper.to_string(index=False)
+        )
+        results["anova_2way_modulation_amount"] = (aov_2way_ma_pg, aov_2way_ma_helper)
 
     log.info("\n" + "=" * 80)
     log.info(" 6. POST-HOC PAIRWISE TESTS (BONFERRONI)")
@@ -775,6 +1072,7 @@ def run_all_anovas(
             "\n[Post-hoc: Amount (4 conditions)]\n"
             + posthocs["amount"].to_string(index=False)
         )
+    results["posthocs"] = posthocs
 
     log.info("\n" + "=" * 80)
     log.info(" 7. SIMPLE EFFECTS ANALYSIS (BREAKDOWN OF 2-WAY INTERACTIONS)")
@@ -782,9 +1080,13 @@ def run_all_anovas(
     simple_effects = compute_simple_effects(df, dv=dv, input_col=input_col)
     for name, res_df in simple_effects.items():
         log.info(f"\n[Simple Effects: {name}]\n" + res_df.to_string(index=False))
+    results["simple_effects"] = simple_effects
+
+    return results
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Command-line entry point to execute ANOVA analyses on MUSHRA data."""
     parser = argparse.ArgumentParser(
         description="Run ANOVA analyses on prepared MUSHRA listening test data."
     )
@@ -792,7 +1094,7 @@ if __name__ == "__main__":
         "data_path",
         nargs="?",
         default=os.path.join(OUT_DIR, "listening_test_responses_postprocessed.tsv"),
-        help=f"Path to prepared MUSHRA data file (tsv or csv; default: ../../out/listening_test_responses_postprocessed.tsv)",
+        help=f"Path to prepared MUSHRA data file (tsv or csv; default: {OUT_DIR}/listening_test_responses_postprocessed.tsv)",
     )
     parser.add_argument(
         "--dv",
@@ -804,6 +1106,12 @@ if __name__ == "__main__":
         default=None,
         help="Input rating column to aggregate (default: rating_score if present, else dv)",
     )
+    parser.add_argument(
+        "--include-lower-order",
+        action="store_true",
+        default=False,
+        help="Also compute and display pooled 4-way, 3-way, and 2-way ANOVAs (default: False)",
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.data_path):
@@ -811,4 +1119,13 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit(1)
 
-    run_all_anovas(args.data_path, dv=args.dv, input_col=args.input_col)
+    run_all_anovas(
+        args.data_path,
+        dv=args.dv,
+        input_col=args.input_col,
+        include_lower_order=args.include_lower_order,
+    )
+
+
+if __name__ == "__main__":
+    main()

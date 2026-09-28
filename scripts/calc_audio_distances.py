@@ -331,12 +331,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--samples-dir",
         default=os.path.join(OUT_DIR, "stimuli"),
-        help="Directory containing audio samples (default: {OUT_DIR}/stimuli)",
+        help=f"Directory containing audio samples (default: {OUT_DIR}/stimuli)",
     )
     parser.add_argument(
         "--save-dir",
         default=OUT_DIR,
-        help="Directory to save distance TSV (default: {OUT_DIR})",
+        help=f"Directory to save distance TSV (default: {OUT_DIR})",
     )
     parser.add_argument(
         "--save-path",
