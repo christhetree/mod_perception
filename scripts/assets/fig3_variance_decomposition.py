@@ -19,14 +19,12 @@ import sys
 from pathlib import Path
 from typing import Optional, Sequence
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
-
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 
-from paths import DATA_DIR, OUT_DIR
+from paths import OUT_DIR
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
@@ -552,10 +550,8 @@ def main() -> None:
     parser.add_argument(
         "input",
         nargs="?",
-        default=os.path.join(
-            # OUT_DIR, "variance_decomposition_pooled.tsv"
-            OUT_DIR, "variance_decomposition.tsv"
-        ),
+        # default=os.path.join(OUT_DIR, "variance_decomposition_pooled.tsv"),
+        default=os.path.join(OUT_DIR, "variance_decomposition.tsv"),
         help=f"Path to ANOVA variance results TSV dataset (default: {OUT_DIR}/variance_decomposition.tsv).",
     )
     parser.add_argument(
