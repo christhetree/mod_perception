@@ -121,9 +121,14 @@
     padding-right: 1rem;
 }
 
-/* breathing room when jumping to a figure or table anchor */
+/* breathing room when jumping to a figure, table, or section anchor */
 [id^="fig-"],
-[id^="table-"] {
+[id^="table-"],
+#stimuli-generation,
+#stimuli-listening-samples,
+#listening-test,
+#downloads,
+#toc {
     scroll-margin-top: 1.5rem;
 }
 
