@@ -16,75 +16,55 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch as tr
 from torch import Tensor as T
 
-# Ensure project root and code directory are in sys.path
-_repo_root = Path(__file__).resolve().parent.parent.parent
-if str(_repo_root) not in sys.path:
-    sys.path.insert(0, str(_repo_root))
-if str(_repo_root / "code") not in sys.path:
-    sys.path.insert(0, str(_repo_root / "code"))
-
-from features import SpectralCentroid
+from features import SpectralCentroid, compute_richness_curve, compute_warmth_curve
+from paths import DATA_DIR, OUT_DIR
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 log.setLevel(level=os.environ.get("LOGLEVEL", "INFO"))
 
-# Styling constants
-SERIES_COLOR = "#2a78d6"
-AXIS_COLOR = "#52514e"
+# ------------------------------------------------------------------------------
+# Figure layout, dimensions, typography, and styling constants
+# ------------------------------------------------------------------------------
+SERIES_COLOR: str = "#2a78d6"
+AXIS_COLOR: str = "#52514e"
 
 # The listening test wavetables, one row per wavetable in this order
-LT_DIMS = ["warmth", "brightness", "richness"]
-LT_VARIANTS = ["synthetic", "real"]
+LT_DIMS: list[str] = ["warmth", "brightness", "richness"]
+LT_VARIANTS: list[str] = ["synthetic", "real"]
 
 # Columns of the listening test overview: the wavetable and three of its curves
-LT_FEATURES = ["Warmth", "Spectral Centroid", "Richness"]
-LT_COL_TITLES = ["Wavetable", "Warmth", "Brightness", "Richness"]
-LT_FIG_SIZE = (8.0, 10.5)
-LT_DPI = 300
-LT_FONT_SIZE = 12
-LT_TICK_FONT_SIZE = 10
+LT_FEATURES: list[str] = ["Warmth", "Spectral Centroid", "Richness"]
+LT_COL_TITLES: list[str] = ["Wavetable", "Warmth", "Brightness", "Richness"]
+LT_FIG_SIZE: tuple[float, float] = (8.0, 10.5)
+LT_DPI: int = 300
+LT_FONT_SIZE: float = 12.0
+LT_TICK_FONT_SIZE: float = 10.0
 
 
-def compute_warmth_curve(frame_batch: T, eps: float = 1e-8) -> T:
-    """Warmth = odd harmonic power ratio (excluding DC)."""
-    fft = tr.fft.rfft(frame_batch)
-    power = tr.abs(fft) ** 2
+def compute_features(wt: T, sr: int = 44100) -> dict[str, T]:
+    """Compute Warmth, Spectral Centroid (Brightness), and Richness curves for a wavetable.
 
-    odd_power = power[:, 1::2].sum(dim=1)
-    total_power = power[:, 1:].sum(dim=1)
+    Parameters
+    ----------
+    wt : torch.Tensor
+        Wavetable tensor of shape (num_frames, frame_size).
+    sr : int, default=44100
+        Sample rate in Hz used for spectral centroid computation.
 
-    warmth = odd_power / (total_power + eps)
-    return warmth
-
-
-def compute_richness_curve(frame_batch: T, eps: float = 1e-8) -> T:
-    """Spectral spread mapped to richness score."""
-    fft = tr.fft.rfft(frame_batch)
-    mag = tr.abs(fft)
-    power = mag**2
-
-    freqs = tr.linspace(0, 1, power.shape[1], device=power.device)
-
-    total = power.sum(dim=1, keepdim=True) + eps
-    centroid = (power * freqs).sum(dim=1, keepdim=True) / total
-
-    spread = tr.sqrt((power * (freqs - centroid) ** 2).sum(dim=1) / total.squeeze(1))
-
-    k = 7.5
-    richness = tr.log(spread * (tr.exp(tr.tensor(k)) - 1) + 1) / k
-    return richness
-
-
-def compute_features(wt: T, sr: int = 44100) -> Dict[str, T]:
-    """Compute Warmth, Spectral Centroid (Brightness), and Richness curves."""
+    Returns
+    -------
+    dict[str, torch.Tensor]
+        Dictionary mapping feature names ('Warmth', 'Spectral Centroid', 'Richness')
+        to their computed 1D curve tensors across wavetable positions.
+    """
     centroid_metric = SpectralCentroid(
         sr, window="flat_top", compress=True, floor=1e-4, scaling="kazazis"
     )
@@ -100,15 +80,53 @@ def plot_listening_test_wavetables(
     wt_dir: Union[str, Path],
     sr: int = 44100,
     output_path: Optional[Union[str, Path]] = None,
-    fig_size: Tuple[float, float] = LT_FIG_SIZE,
+    fig_size: tuple[float, float] = LT_FIG_SIZE,
     dpi: int = LT_DPI,
     show: bool = True,
-) -> List[Tuple[str, Dict[str, Tuple[float, float]]]]:
-    """One row per listening test wavetable, showing the wavetable itself
-    followed by the curves of the three timbral dimensions. Returns the range
-    of each of those curves, per wavetable."""
-    wt_dir_str = str(wt_dir)
-    rows = []
+) -> list[tuple[str, dict[str, tuple[float, float]]]]:
+    """Plot 6x4 grid of listening test wavetables and their timbre feature curves.
+
+    Each row represents one wavetable (Warmth Synthetic/Real, Brightness Synthetic/Real,
+    Richness Synthetic/Real) and displays:
+    1. Wavetable surface imshow across normalized phase and position.
+    2. Warmth curve.
+    3. Brightness (Spectral Centroid) curve.
+    4. Richness curve.
+
+    Parameters
+    ----------
+    wt_dir : Union[str, Path]
+        Directory containing the listening test `.pt` wavetable files.
+    sr : int, default=44100
+        Sample rate in Hz for feature extraction.
+    output_path : Optional[Union[str, Path]], default=None
+        Path to save figure (.pdf, .png, .svg). Parent directories are created if missing.
+    fig_size : tuple[float, float], default=(8.0, 10.5)
+        Figure width and height in inches.
+    dpi : int, default=300
+        Resolution in dots per inch for image export.
+    show : bool, default=True
+        Whether to display the plot interactively.
+
+    Returns
+    -------
+    list[tuple[str, dict[str, tuple[float, float]]]]
+        List of tuples containing (row_name, {feature_name: (min_val, max_val)})
+        for each wavetable.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified wavetable directory does not exist.
+    AssertionError
+        If any expected wavetable file is missing or ambiguous.
+    """
+    wt_dir_path = Path(wt_dir)
+    if not wt_dir_path.exists():
+        raise FileNotFoundError(f"Wavetable directory not found at: {wt_dir_path}")
+
+    wt_dir_str = str(wt_dir_path)
+    rows: list[tuple[str, str]] = []
     for dim in LT_DIMS:
         for variant in LT_VARIANTS:
             paths = sorted(glob.glob(os.path.join(wt_dir_str, f"{dim}_{variant}*.pt")))
@@ -124,7 +142,7 @@ def plot_listening_test_wavetables(
         squeeze=False,
         layout="constrained",
     )
-    ranges = []
+    ranges: list[tuple[str, dict[str, tuple[float, float]]]] = []
     for row_idx, (row_name, wt_path) in enumerate(rows):
         wt = tr.load(wt_path, weights_only=True)
         log.info(f"{row_name}: {os.path.basename(wt_path)}, wt.shape: {wt.shape}")
@@ -143,7 +161,7 @@ def plot_listening_test_wavetables(
         )
 
         wt_np = wt.detach().cpu().numpy()
-        peak = np.abs(wt_np).max()
+        peak = float(np.abs(wt_np).max())
         ax = axs[row_idx][0]
         # Frames along x so that every plot in the row shares the position axis
         ax.imshow(
@@ -193,9 +211,15 @@ def plot_listening_test_wavetables(
 
 
 def print_feature_ranges(
-    ranges: List[Tuple[str, Dict[str, Tuple[float, float]]]],
+    ranges: Sequence[tuple[str, dict[str, tuple[float, float]]]],
 ) -> None:
-    """Print a table of the range of each timbre feature, per wavetable."""
+    """Print a formatted console table showing min and max values for each timbre feature per wavetable.
+
+    Parameters
+    ----------
+    ranges : Sequence[tuple[str, dict[str, tuple[float, float]]]]
+        List of wavetable feature ranges as returned by `plot_listening_test_wavetables`.
+    """
     name_w = max(len(name) for name, _ in ranges)
     header = f"{'Wavetable':<{name_w}}" + "".join(
         f"  {title:^17}" for title in LT_COL_TITLES[1:]
@@ -214,56 +238,22 @@ def print_feature_ranges(
         print(row)
 
 
-def resolve_file_path(path_str: str) -> Path:
-    """Resolve file path relative to current working dir, repo root, or script location."""
-    p = Path(path_str).expanduser()
-    if p.exists():
-        return p.resolve()
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    candidate = (repo_root / path_str).resolve()
-    if candidate.exists():
-        return candidate
-    candidate_script = (Path(__file__).resolve().parent / path_str).resolve()
-    if candidate_script.exists():
-        return candidate_script
-    return p.resolve()
-
-
-def resolve_output_path(path_str: str) -> Path:
-    """Resolve output file path properly relative to cwd, repo root, or script location."""
-    p = Path(path_str).expanduser()
-    if p.is_absolute():
-        return p
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    if str(path_str).startswith("../../"):
-        rel_stripped = str(path_str)[6:]
-        candidate_repo = (repo_root / rel_stripped).resolve()
-        if candidate_repo.parent.exists():
-            return candidate_repo
-    candidate_cwd = p.resolve()
-    if candidate_cwd.parent.exists():
-        return candidate_cwd
-    candidate_script = (Path(__file__).resolve().parent / path_str).resolve()
-    if candidate_script.parent.exists():
-        return candidate_script
-    return (repo_root / path_str).resolve()
-
-
-def main():
+def main() -> None:
+    """Parse command line arguments and generate the wavetable overview figure."""
     parser = argparse.ArgumentParser(
         description="Generate publication-ready figure of listening test wavetables and timbre feature curves."
     )
     parser.add_argument(
         "wt_dir",
         nargs="?",
-        default="data/listening_test",
-        help="Directory containing the listening test .pt wavetables (default: data/listening_test)",
+        default=os.path.join(DATA_DIR, "wavetables"),
+        help=f"Directory containing the listening test .pt wavetables (default: {DATA_DIR}/wavetables).",
     )
     parser.add_argument(
         "-o",
         "--output",
-        default="../../out/figure_wavetables.pdf",
-        help="Path to save figure (default: out/figure_wavetables.pdf). Supports .pdf, .png, .svg, etc.",
+        default=os.path.join(OUT_DIR, "figures", "wavetables.pdf"),
+        help=f"Path to save figure (default: {OUT_DIR}/figures/wavetables.pdf). Supports .pdf, .png, .svg, etc.",
     )
     parser.add_argument(
         "--sr",
@@ -291,12 +281,12 @@ def main():
 
     args = parser.parse_args()
 
-    wt_dir_path = resolve_file_path(args.wt_dir)
+    wt_dir_path = Path(args.wt_dir)
     if not wt_dir_path.exists():
         sys.stderr.write(f"Error: Wavetable directory not found at: {wt_dir_path}\n")
         sys.exit(1)
 
-    out_path = resolve_output_path(args.output) if args.output else None
+    out_path = Path(args.output) if args.output else None
 
     ranges = plot_listening_test_wavetables(
         wt_dir=wt_dir_path,

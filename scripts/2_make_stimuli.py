@@ -175,7 +175,7 @@ def plot_mod_signals(
     reg_seed : int, default=42
         Random seed for irregularity modulation.
     save_dir : str, default=""
-        Directory where the plot PNG will be saved. If empty, saving is skipped.
+        Directory where the plot SVG will be saved. If empty, saving is skipped.
     fig_size : Tuple[float, float], default=FIG_SIZE
         Figure size (width, height) in inches.
     dpi : int, default=DPI
@@ -222,7 +222,7 @@ def plot_mod_signals(
 
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
-        save_name = f"mod_sigs__{mod_type}.png"
+        save_name = f"mod_sigs__{mod_type}.svg"
         plt.savefig(os.path.join(save_dir, save_name), dpi=dpi)
         log.info(f"Saved {save_name} ({len(mod_sigs)} signals, {dpi} dpi)")
     plt.close(fig)
