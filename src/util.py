@@ -2,9 +2,10 @@ import glob
 import logging
 import os
 import re
-from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 import pyloudnorm as pyln
 import torch.nn.functional as F
 from torch import Tensor as T, nn
@@ -132,8 +133,7 @@ def loudness_normalize(
     normalized_audio = pyln.normalize.loudness(audio, loudness, target_lufs)
 
     # Optional: clipping protection
-    # peak = np.max(np.abs(normalized_audio))
-    # if peak > 1.0:
+    # peak = np.max(np.abs(normalized_audio))\n    # if peak > 1.0:
     #     normalized_audio = normalized_audio / peak
 
     return normalized_audio, loudness, gain
@@ -197,3 +197,27 @@ def find_variants(
 
     paths.sort(key=_sort_key)
     return paths
+
+
+def format_sig_figs(val: float, precision: int = 3) -> str:
+    """Format a float to a fixed number of significant figures, padding trailing zeros."""
+    if val is None or pd.isna(val):
+        return ""
+    if val >= 1.0 or val >= 0.9995:
+        return f"{1.0:.{precision}f}"
+    s = f"{val:.{precision}g}"
+    if "e" in s or "E" in s:
+        return f"{val:.{precision}f}"
+    parts = s.split(".")
+    if len(parts) == 1:
+        needed = precision - len(parts[0])
+        return parts[0] + "." + "0" * max(0, needed)
+    sig_digits = (
+        len(parts[1].lstrip("0"))
+        if parts[0] == "0"
+        else len(parts[0].lstrip("0")) + len(parts[1])
+    )
+    needed = precision - sig_digits
+    if needed > 0:
+        s += "0" * needed
+    return s
