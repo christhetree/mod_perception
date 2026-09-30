@@ -137,7 +137,7 @@
                 All 90 audio stimuli can be listened to below, grouped by modulation signal type: amplitude (<a href="#table-amp">Table 2</a>), frequency (<a href="#table-freq">Table 3</a>), and irregularity (<a href="#table-reg">Table 4</a>).
             </p>
             <p>
-                We chose warmth, brightness, and richness as the timbre qualities for this listening test because they are mathematically defined and can therefore be controlled relatively independently, and because there is prior work studying them in the context of wavetable synthesis [<a href="https://doi.org/10.48550/arXiv.2407.19862" target=”_blank”>Lee et al., 2024</a>; <a href="https://doi.org/10.1109/APSIPAASC63619.2025.10848699" target=”_blank”>Yutani et al., 2024</a>].
+                We chose warmth, brightness, and richness as the timbre qualities for this listening test because they are mathematically defined and can therefore be controlled relatively independently, and because there is prior work studying them in the context of wavetable synthesis [<a href="https://doi.org/10.1109/APSIPAASC63619.2025.10848699" target=”_blank”>Yutani et al., 2024</a>; <a href="https://doi.org/10.48550/arXiv.2407.19862" target=”_blank”>Lee et al., 2024</a>].
                 Warmth is the fraction of harmonic power falling in the odd harmonics, excluding DC; brightness is the spectral centroid of the log-compressed magnitude spectrum, mapped onto a perceptual linear scale [<a href="https://doi.org/10.3389/fpsyg.2022.835401" target=”_blank”>Kazazis et al., 2022</a>]; and richness is the spectral spread expressed as a fraction of the Nyquist frequency and then log-compressed.
                 For each timbre quality, we selected one real wavetable from <a href="https://www.ableton.com/en/packs/wavetable/" target=”_blank”>Ableton's Wavetable</a> default collection (<em>"Vintage - Logue Saw"</em> for warmth, <em>"Harmonics - Synced Sines"</em> for brightness, and <em>"Filter - Acid Saw"</em> for richness), and synthesized one from scratch using the mathematical definition of each timbre quality to cover approximately the same range as its corresponding real wavetable while keeping the other two qualities as constant as possible.
                 <a href="#table-feature-ranges">Table 1</a> and <a href="#fig-wavetables">Figure 2</a> show the minimum and maximum values of the three timbre qualities across all positions of the six wavetables.
@@ -978,7 +978,7 @@
     </div>
 
     <div class="section mb-5" id="listening-test">
-        <h2 class="">3. Listening Test</h2>
+        <h2>3. Listening Test</h2>
         <hr>
         <p>
             The online listening test followed the <a href="https://www.itu.int/rec/R-REC-BS.1116/en" target="_blank">MUSHRA</a> standard and was hosted using the <a href="https://www.audiolabs-erlangen.de/resources/webMUSHRA" target="_blank">webMUSHRA</a> framework and AWS.
@@ -986,13 +986,22 @@
             Participants were encouraged to use the full range of the rating scale for each question and self-reported their listening equipment and music / audio production experience at the time of submission.
             They were also required to click each audio playback button and stimulus rating slider at least once before being able to continue to the next question.
             Trials were presented to listeners in a random order to prevent listener fatigue and order effects.
-         </p>
+        </p>
         <p>
             54 participants completed the test.
             Three were removed for using low quality playback devices (laptop speakers), and 23 more were removed based on the MUSHRA unreliable rater definition (i.e., the hidden reference is rated >10 for >15% of trials).
             Seven additional individual trials were removed where completion took under 24 seconds since this implies the participant did not listen to all five stimuli and the reference audio in their entirety.
             Two more individual trials where all five stimuli received identical ratings were also removed, resulting in 28 remaining participants of which 23 have complete data across all 18 trials.
         </p>
+        <p>
+            This study received ethical approval from the Electronic Engineering and Computer Science Devolved School Research Ethics Committee (EECS DSREC) at Queen Mary University of London (Ref: DSEECS26.051, <em>"Investigating Human Sensitivity to Modulated Wavetable Audio Samples"</em>; approval date: 02 June 2026, valid through 01 June 2029).
+            The study was classified as low-risk and conducted as an anonymous online survey.
+            Personal data processing adhered to institutional research governance and UK GDPR standards under the lawful basis of 'public task'.
+            No directly identifying information (such as names, contact details, or IP addresses) was collected or stored.
+            Participants reviewed the <a href="https://drive.google.com/file/d/1C3JvandrGuZDRbpk4JYd7nDrQAZJbbPe/view?usp=drive_link" target="_blank">Participant Information Sheet</a> and provided informed consent via the <a href="https://drive.google.com/file/d/1MZS9V7fUpNYdwZtYLiTykn0MR4Ej-wdD/view?usp=drive_link" target="_blank">Consent Form</a> prior to participation.
+        </p>
+
+
         <h5>Listening Test Website Screenshots</h5>
         <ol>
             <li>
