@@ -41,26 +41,6 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 log.setLevel(level=os.environ.get("LOGLEVEL", "INFO"))
 
-__all__ = [
-    "ALL_FACTORS",
-    "FACTOR_ALIASES",
-    "FACTOR_DISPLAY_NAMES",
-    "DISPLAY_FACTOR_ORDER",
-    "CONDITION_AMOUNTS",
-    "CONDITION_LABELS",
-    "normalize_pool_factors",
-    "pool_data",
-    "parse_wavetable",
-    "map_amount_to_condition",
-    "prepare_loss_data",
-    "load_human_data",
-    "compute_interaction_pooled_anova",
-    "format_table_for_display",
-    "extract_variance_record",
-    "run_variance_analysis",
-    "main",
-]
-
 ALL_FACTORS: list[str] = ["modulation", "feature", "source", "rating_stimulus"]
 
 FACTOR_ALIASES: dict[str, str] = {

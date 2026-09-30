@@ -1,7 +1,7 @@
 """Noise ceiling calculation for MUSHRA listening test responses.
 
-Computes both individual-level and group-level noise ceilings for:
-1. Entire file (all 18 trials, 72 stimuli per participant)
+Computes both individual-level and group-level noise ceilings across multiple granularity levels:
+1. Entire dataset (all 18 trials, 72 non-reference stimuli per participant)
 2. Per modulation type (frequency, amplitude, regularity; 6 trials, 24 stimuli each)
 3. Per modulation x timbre combination (3 modulations x 3 timbres = 9 conditions; 2 trials, 8 stimuli each)
 
@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import Literal, Union
 
@@ -49,29 +48,47 @@ def prepare_data(
 
     Extracts `modulation`, `timbre` (feature), and `source` from `trial_id`
     (e.g., 'freq_brightness_real' -> modulation='freq', timbre='brightness', source='real').
+
+    Parameters
+    ----------
+    data_source : Union[str, Path, pd.DataFrame]
+        TSV/CSV file path or existing pandas DataFrame containing listening responses.
+    exclude_reference : bool, default=True
+        Whether to drop reference anchor ratings (typically rated 0 in difference MUSHRA).
+
+    Returns
+    -------
+    pd.DataFrame
+        Prepared DataFrame with added factorial columns: 'modulation', 'timbre',
+        'source', and 'mod_timbre'.
+
+    Raises
+    ------
+    FileNotFoundError
+        If data_source path does not exist.
+    ValueError
+        If required columns are missing from the dataset.
     """
     if isinstance(data_source, (str, Path)):
         file_path = Path(data_source).expanduser().resolve()
+        if not file_path.exists():
+            raise FileNotFoundError(f"Listening test response file not found: {file_path}")
         log.info(f"Loading responses from {file_path}")
-        sep = "\t" if file_path.suffix == ".tsv" else ","
+        sep = "\t" if file_path.suffix in [".tsv", ".txt"] else ","
         df = pd.read_csv(file_path, sep=sep)
     else:
         df = data_source.copy()
 
-    # Verify required columns
     required = ["session_uuid", "trial_id", "rating_stimulus", "rating_score"]
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns in dataset: {missing}")
 
-    # Exclude reference anchor if requested (typically rated 0 in difference MUSHRA)
     if exclude_reference:
         df = df[df["rating_stimulus"] != "reference"].copy()
 
-    # Drop training trials if present
     df = df[df["trial_id"] != "training"].copy()
 
-    # Parse trial_id components: modulation, timbre, source
     split_cols = df["trial_id"].str.split("_", expand=True)
     if split_cols.shape[1] >= 2:
         df["modulation"] = split_cols[0]
@@ -79,18 +96,34 @@ def prepare_data(
     if split_cols.shape[1] >= 3:
         df["source"] = split_cols[2]
 
-    # Combine modulation and timbre (e.g., 'freq_brightness')
     df["mod_timbre"] = df["modulation"] + "_" + df["timbre"]
 
     return df
 
 
-def _compute_slice_ceilings(
+def compute_slice_ceilings(
     matrix: pd.DataFrame,
     n_bootstraps: int = 1000,
     seed: int = 42,
 ) -> dict[str, float]:
-    """Compute individual lower/upper bounds and group split-half ceiling for a stimulus x subject matrix."""
+    """Compute individual lower/upper bounds and group split-half ceiling for a stimulus x subject matrix.
+
+    Parameters
+    ----------
+    matrix : pd.DataFrame
+        Pivoted ratings matrix where rows represent stimuli and columns represent participant session UUIDs.
+    n_bootstraps : int, default=1000
+        Number of Monte Carlo iterations for group split-half estimation.
+    seed : int, default=42
+        Random seed for reproducible split-half resampling.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary containing sample counts, individual ceiling bounds, and group split-half
+        correlations with standard deviations and 95% bootstrap confidence intervals
+        for Pearson r, Spearman rho, and Kendall tau.
+    """
     n_stimuli, n_subjects = matrix.shape
     if n_subjects < 3 or n_stimuli < 3:
         return {
@@ -235,27 +268,36 @@ def compute_noise_ceiling(
 ) -> pd.DataFrame:
     """Compute noise ceilings at the specified level(s) of granularity.
 
-    Args:
-        data_source: TSV/CSV filepath or prepared DataFrame.
-        level: Granularity level:
-            - 'entire': 1 overall ceiling across all 18 trials (72 stimuli).
-            - 'modulation': 3 ceilings for frequency, amplitude, regularity (6 trials / 24 stimuli each).
-            - 'modulation_timbre': 9 ceilings for mod x timbre (2 trials / 8 stimuli each).
-            - 'all': computes all 3 levels.
-        complete_subjects:
-            - 'slice': include subjects with complete data for that specific slice (maximizes N per slice).
-            - 'global': include only subjects who completed all 18 trials across the entire file.
-        exclude_reference: Whether to drop the reference condition (default: True).
-        n_bootstraps: Number of Monte Carlo iterations for group split-half estimation.
-        seed: Random seed for split-half reproducibility.
-        show_progress: Whether to display a tqdm progress bar.
+    Parameters
+    ----------
+    data_source : Union[str, Path, pd.DataFrame]
+        TSV/CSV file path or prepared DataFrame of listening test responses.
+    level : Literal["all", "entire", "modulation", "modulation_timbre"], default="all"
+        Granularity level:
+        - 'entire': 1 overall ceiling across all 18 trials (72 stimuli).
+        - 'modulation': 3 ceilings for frequency, amplitude, regularity (6 trials / 24 stimuli each).
+        - 'modulation_timbre': 9 ceilings for mod x timbre (2 trials / 8 stimuli each).
+        - 'all': computes all 3 levels.
+    complete_subjects : Literal["slice", "global"], default="slice"
+        Subject completion filtering strategy:
+        - 'slice': include subjects with complete responses for that condition slice (maximizes N per slice).
+        - 'global': include only subjects who completed all 18 trials across the entire study.
+    exclude_reference : bool, default=True
+        Whether to exclude the reference stimulus rating (0-difference anchor).
+    n_bootstraps : int, default=1000
+        Number of Monte Carlo iterations for group split-half estimation.
+    seed : int, default=42
+        Random seed for reproducible split-half resampling.
+    show_progress : bool, default=True
+        Whether to display a tqdm progress bar during computation.
 
-    Returns:
-        pd.DataFrame containing summary statistics for each condition slice.
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing noise ceiling estimates across all computed slices.
     """
     df = prepare_data(data_source, exclude_reference=exclude_reference)
 
-    # If global complete is requested, find subjects complete across all 18 trials
     if complete_subjects == "global":
         full_pivot = df.pivot_table(
             index=["trial_id", "rating_stimulus"],
@@ -319,7 +361,7 @@ def compute_noise_ceiling(
     )
     for granularity, condition, n_trials, pivot_slice in pbar:
         pbar.set_postfix_str(condition)
-        res = _compute_slice_ceilings(
+        res = compute_slice_ceilings(
             pivot_slice, n_bootstraps=n_bootstraps, seed=seed
         )
         res["granularity"] = granularity
@@ -329,7 +371,6 @@ def compute_noise_ceiling(
 
     result_df = pd.DataFrame(records)
 
-    # Reorder columns for readability
     first_cols = [
         "granularity",
         "condition",
@@ -341,7 +382,8 @@ def compute_noise_ceiling(
     return result_df[first_cols + other_cols]
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Command-line interface for calculating noise ceilings on MUSHRA responses."""
     parser = argparse.ArgumentParser(
         description="Compute individual and group-level noise ceilings on MUSHRA responses."
     )
@@ -375,11 +417,6 @@ if __name__ == "__main__":
         help="Number of Monte Carlo iterations for group split-half estimation (default: 1000).",
     )
     parser.add_argument(
-        "--no-progress",
-        action="store_true",
-        help="Disable the tqdm progress bar.",
-    )
-    parser.add_argument(
         "-o",
         "--output",
         default=os.path.join(OUT_DIR, "noise_ceilings.tsv"),
@@ -387,33 +424,36 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if not os.path.exists(args.data_path):
-        log.error(f"File not found: {args.data_path}")
-        sys.exit(1)
+    data_path = Path(args.data_path).expanduser().resolve()
+    if not data_path.exists():
+        raise FileNotFoundError(f"File not found: {data_path}")
 
     results_df = compute_noise_ceiling(
-        data_source=args.data_path,
+        data_source=data_path,
         level=args.level,
         complete_subjects=args.complete_subjects,
         exclude_reference=not args.include_reference,
         n_bootstraps=args.bootstraps,
-        show_progress=not args.no_progress,
     )
 
-    # Configure pandas display and print the collected DataFrame directly
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", 1000)
     pd.set_option("display.precision", 3)
 
-    print("\n" + "=" * 120)
-    print("NOISE CEILING RESULTS (DataFrame)")
-    print("=" * 120)
-    print(results_df.to_string(index=False))
-    print("=" * 120 + "\n")
+    sep_bar = "=" * 120
+    log.info("\n" + sep_bar)
+    log.info("NOISE CEILING RESULTS (DataFrame)")
+    log.info(sep_bar)
+    log.info("\n" + results_df.to_string(index=False))
+    log.info(sep_bar + "\n")
 
     if args.output:
         out_path = Path(args.output).expanduser().resolve()
         out_path.parent.mkdir(parents=True, exist_ok=True)
         sep = "\t" if out_path.suffix == ".tsv" else ","
         results_df.to_csv(out_path, sep=sep, index=False)
-        print(f"Results successfully exported to: {out_path}")
+        log.info(f"Results successfully exported to: {out_path}")
+
+
+if __name__ == "__main__":
+    main()
