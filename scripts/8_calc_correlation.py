@@ -1,8 +1,7 @@
 """Correlation analysis between audio distance functions and human MUSHRA listening test data.
 
 Compares audio distance functions (MSE, MSS, MFCC, CLAP, PANNs, Wavelet Scattering, JTFS, etc.)
-from data/distances__all.csv against human perceptual difference ratings from
-data/listening_test_responses_preprocessed.tsv.
+from audio distance datasets against human perceptual difference ratings from postprocessed MUSHRA responses.
 
 Granularity Levels:
 1. Entire dataset (all 18 trials, 72 non-reference stimuli per participant)
@@ -18,20 +17,15 @@ Metrics:
 - Individual Correlation:
     Correlation of model distance with each participant's individual ratings:
     - Mean and unbiased sample standard deviation (ddof=1) across participants.
-- Noise Ceiling Benchmarking (Optional with --include-noise-ceiling):
-    Attaches the individual lower/upper bounds and group noise ceilings from noise_ceiling.py
-    for direct evaluation against the theoretical human consensus limit.
 """
 
 from __future__ import annotations
 
 import argparse
-import ast
 import logging
 import os
-import sys
 from pathlib import Path
-from typing import Literal, Optional, Sequence, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -40,15 +34,12 @@ from tqdm import tqdm
 
 from paths import OUT_DIR
 
-# Ensure local imports from scripts directory work cleanly
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 log.setLevel(level=os.environ.get("LOGLEVEL", "INFO"))
 
 # Mapping of modulation type and physical amount to MUSHRA rating_stimulus
-AMOUNT_TO_STIMULUS = {
+AMOUNT_TO_STIMULUS: dict[str, dict[float, str]] = {
     "amp": {
         0.10: "reference",
         0.30: "condition_a",
@@ -77,33 +68,53 @@ def prepare_data(
     data_source: Union[str, Path, pd.DataFrame],
     exclude_reference: bool = True,
 ) -> pd.DataFrame:
-    """Load and prepare MUSHRA TSV/CSV data for noise ceiling analyses.
+    """Load and prepare MUSHRA TSV/CSV data for correlation analyses.
 
     Extracts `modulation`, `timbre` (feature), and `source` from `trial_id`
     (e.g., 'freq_brightness_real' -> modulation='freq', timbre='brightness', source='real').
+
+    Parameters
+    ----------
+    data_source : Union[str, Path, pd.DataFrame]
+        TSV/CSV file path or existing pandas DataFrame containing listening responses.
+    exclude_reference : bool, default=True
+        Whether to drop reference anchor ratings (typically rated 0 in difference MUSHRA).
+
+    Returns
+    -------
+    pd.DataFrame
+        Prepared DataFrame with added factorial columns: 'modulation', 'timbre',
+        'source', and 'mod_timbre'.
+
+    Raises
+    ------
+    FileNotFoundError
+        If data_source path does not exist.
+    ValueError
+        If required columns are missing from the dataset.
     """
     if isinstance(data_source, (str, Path)):
         file_path = Path(data_source).expanduser().resolve()
+        if not file_path.exists():
+            raise FileNotFoundError(
+                f"Listening test response file not found: {file_path}"
+            )
         log.info(f"Loading responses from {file_path}")
-        sep = "\t" if file_path.suffix == ".tsv" else ","
+        sep = "\t" if file_path.suffix in [".tsv", ".txt"] else ","
         df = pd.read_csv(file_path, sep=sep)
     else:
         df = data_source.copy()
 
-    # Verify required columns
     required = ["session_uuid", "trial_id", "rating_stimulus", "rating_score"]
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns in dataset: {missing}")
 
-    # Exclude reference anchor if requested (typically rated 0 in difference MUSHRA)
     if exclude_reference:
         df = df[df["rating_stimulus"] != "reference"].copy()
 
-    # Drop training trials if present
     df = df[df["trial_id"] != "training"].copy()
 
-    # Parse trial_id components: modulation, timbre, source
     split_cols = df["trial_id"].str.split("_", expand=True)
     if split_cols.shape[1] >= 2:
         df["modulation"] = split_cols[0]
@@ -111,200 +122,9 @@ def prepare_data(
     if split_cols.shape[1] >= 3:
         df["source"] = split_cols[2]
 
-    # Combine modulation and timbre (e.g., 'freq_brightness')
     df["mod_timbre"] = df["modulation"] + "_" + df["timbre"]
 
     return df
-
-
-def _compute_slice_ceilings(
-    matrix: pd.DataFrame,
-    n_bootstraps: int = 1000,
-    seed: int = 42,
-) -> dict[str, float]:
-    """Compute individual lower/upper bounds and group split-half ceiling for a stimulus x subject matrix."""
-    n_stimuli, n_subjects = matrix.shape
-    if n_subjects < 3 or n_stimuli < 3:
-        return {
-            "n_stimuli": n_stimuli,
-            "n_subjects": n_subjects,
-            "pearson_indiv_lower": float("nan"),
-            "pearson_indiv_lower_std": float("nan"),
-            "pearson_indiv_upper": float("nan"),
-            "pearson_indiv_upper_std": float("nan"),
-            "pearson_group": float("nan"),
-            "pearson_group_std": float("nan"),
-            "pearson_group_ci95_low": float("nan"),
-            "pearson_group_ci95_high": float("nan"),
-            "spearman_indiv_lower": float("nan"),
-            "spearman_indiv_lower_std": float("nan"),
-            "spearman_indiv_upper": float("nan"),
-            "spearman_indiv_upper_std": float("nan"),
-            "spearman_group": float("nan"),
-            "spearman_group_std": float("nan"),
-            "spearman_group_ci95_low": float("nan"),
-            "spearman_group_ci95_high": float("nan"),
-            "kendall_indiv_lower": float("nan"),
-            "kendall_indiv_lower_std": float("nan"),
-            "kendall_indiv_upper": float("nan"),
-            "kendall_indiv_upper_std": float("nan"),
-            "kendall_group": float("nan"),
-            "kendall_group_std": float("nan"),
-            "kendall_group_ci95_low": float("nan"),
-            "kendall_group_ci95_high": float("nan"),
-        }
-
-    # 1. Individual ceiling (Leave-One-Out vs Grand Mean)
-    grand_mean = matrix.mean(axis=1)
-
-    p_lower, p_upper = [], []
-    s_lower, s_upper = [], []
-    k_lower, k_upper = [], []
-
-    for col in matrix.columns:
-        sub = matrix[col]
-        loo = matrix.drop(columns=[col]).mean(axis=1)
-
-        # Pearson
-        pr_low, _ = stats.pearsonr(sub, loo)
-        pr_up, _ = stats.pearsonr(sub, grand_mean)
-        p_lower.append(pr_low)
-        p_upper.append(pr_up)
-
-        # Spearman
-        sr_low, _ = stats.spearmanr(sub, loo)
-        sr_up, _ = stats.spearmanr(sub, grand_mean)
-        s_lower.append(sr_low)
-        s_upper.append(sr_up)
-
-        # Kendall tau
-        kr_low, _ = stats.kendalltau(sub, loo)
-        kr_up, _ = stats.kendalltau(sub, grand_mean)
-        k_lower.append(kr_low)
-        k_upper.append(kr_up)
-
-    # 2. Group-level split-half reliability
-    # Spearman-Brown prophecy formula is applied to Pearson and Spearman;
-    # Kendall tau is left uncorrected (raw split-half concordance).
-    rng = np.random.default_rng(seed)
-    cols = matrix.columns.to_numpy()
-    half = n_subjects // 2
-
-    p_splits = []
-    s_splits = []
-    k_splits = []
-
-    for _ in range(n_bootstraps):
-        shuffled = rng.permutation(cols)
-        m1 = matrix[shuffled[:half]].mean(axis=1)
-        m2 = matrix[shuffled[half:]].mean(axis=1)
-
-        # Pearson split-half (with Spearman-Brown correction)
-        pr, _ = stats.pearsonr(m1, m2)
-        if not np.isnan(pr) and (1 + pr) != 0:
-            p_sb = (2 * pr) / (1 + pr)
-            p_splits.append(p_sb)
-
-        # Spearman split-half (with Spearman-Brown correction)
-        sr, _ = stats.spearmanr(m1, m2)
-        if not np.isnan(sr) and (1 + sr) != 0:
-            s_sb = (2 * sr) / (1 + sr)
-            s_splits.append(s_sb)
-
-        # Kendall split-half (raw split-half without Spearman-Brown correction)
-        kr, _ = stats.kendalltau(m1, m2)
-        if not np.isnan(kr):
-            k_splits.append(kr)
-
-    # Compute 95% bootstrap confidence intervals (2.5th and 97.5th percentiles)
-    p_ci_low = float(np.percentile(p_splits, 2.5)) if p_splits else float("nan")
-    p_ci_high = float(np.percentile(p_splits, 97.5)) if p_splits else float("nan")
-
-    s_ci_low = float(np.percentile(s_splits, 2.5)) if s_splits else float("nan")
-    s_ci_high = float(np.percentile(s_splits, 97.5)) if s_splits else float("nan")
-
-    k_ci_low = float(np.percentile(k_splits, 2.5)) if k_splits else float("nan")
-    k_ci_high = float(np.percentile(k_splits, 97.5)) if k_splits else float("nan")
-
-    return {
-        "n_stimuli": n_stimuli,
-        "n_subjects": n_subjects,
-        "pearson_indiv_lower": float(np.mean(p_lower)),
-        "pearson_indiv_lower_std": float(np.std(p_lower, ddof=1)),
-        "pearson_indiv_upper": float(np.mean(p_upper)),
-        "pearson_indiv_upper_std": float(np.std(p_upper, ddof=1)),
-        "pearson_group": float(np.mean(p_splits)) if p_splits else float("nan"),
-        "pearson_group_std": float(np.std(p_splits, ddof=1)) if p_splits else float("nan"),
-        "pearson_group_ci95_low": p_ci_low,
-        "pearson_group_ci95_high": p_ci_high,
-        "spearman_indiv_lower": float(np.mean(s_lower)),
-        "spearman_indiv_lower_std": float(np.std(s_lower, ddof=1)),
-        "spearman_indiv_upper": float(np.mean(s_upper)),
-        "spearman_indiv_upper_std": float(np.std(s_upper, ddof=1)),
-        "spearman_group": float(np.mean(s_splits)) if s_splits else float("nan"),
-        "spearman_group_std": float(np.std(s_splits, ddof=1)) if s_splits else float("nan"),
-        "spearman_group_ci95_low": s_ci_low,
-        "spearman_group_ci95_high": s_ci_high,
-        "kendall_indiv_lower": float(np.mean(k_lower)),
-        "kendall_indiv_lower_std": float(np.std(k_lower, ddof=1)),
-        "kendall_indiv_upper": float(np.mean(k_upper)),
-        "kendall_indiv_upper_std": float(np.std(k_upper, ddof=1)),
-        "kendall_group": float(np.mean(k_splits)) if k_splits else float("nan"),
-        "kendall_group_std": float(np.std(k_splits, ddof=1)) if k_splits else float("nan"),
-        "kendall_group_ci95_low": k_ci_low,
-        "kendall_group_ci95_high": k_ci_high,
-    }
-
-
-def parse_loss_fn_arg(loss_fn: Union[str, Sequence[str]]) -> list[str]:
-    """Parse loss function argument into a flat list of loss function names.
-
-    Supports:
-    - 'all' or ['all'] -> ['all']
-    - Single string: 'clap2' -> ['clap2']
-    - Comma-separated string: 'clap2, jtfs' -> ['clap2', 'jtfs']
-    - JSON or Python list string: '["jtfs_log1p", "scat1d_log1p"]'
-    - Sequence/list of strings: ['jtfs_log1p', 'scat1d_log1p']
-    - CLI multiple args: ['jtfs_log1p', 'scat1d_log1p']
-    """
-    if isinstance(loss_fn, str):
-        candidates = [loss_fn]
-    else:
-        candidates = list(loss_fn)
-
-    results: list[str] = []
-    for item in candidates:
-        item_str = str(item).strip()
-        if not item_str:
-            continue
-        # Check for brackets/parens (JSON / Python list/tuple literal)
-        if (item_str.startswith("[") and item_str.endswith("]")) or (
-            item_str.startswith("(") and item_str.endswith(")")
-        ):
-            try:
-                parsed = ast.literal_eval(item_str)
-                if isinstance(parsed, (list, tuple)):
-                    for x in parsed:
-                        x_str = str(x).strip().strip("\"'")
-                        if x_str:
-                            results.append(x_str)
-                    continue
-            except (ValueError, SyntaxError):
-                pass
-        # Check for comma separation
-        if "," in item_str:
-            for part in item_str.split(","):
-                cleaned = part.strip().strip("\"'")
-                if cleaned:
-                    results.append(cleaned)
-        else:
-            cleaned = item_str.strip().strip("\"'")
-            if cleaned:
-                results.append(cleaned)
-
-    if any(x.lower() == "all" for x in results) or not results:
-        return ["all"]
-    return results
 
 
 def prepare_distances(
@@ -316,11 +136,32 @@ def prepare_distances(
     Extracts `trial_id` and `rating_stimulus` to match the MUSHRA response format:
     - `trial_id`: <modulation>_<timbre>_<source> (e.g. 'freq_brightness_real')
     - `rating_stimulus`: 'condition_a', 'condition_b', 'condition_c', 'condition_d', or 'reference'
+
+    Parameters
+    ----------
+    distances_source : Union[str, Path, pd.DataFrame]
+        TSV/CSV file path or DataFrame containing computed audio distance values.
+    exclude_reference : bool, default=True
+        Whether to drop reference stimulus comparisons.
+
+    Returns
+    -------
+    pd.DataFrame
+        Prepared distances DataFrame.
+
+    Raises
+    ------
+    FileNotFoundError
+        If distances_source path does not exist.
+    ValueError
+        If required columns are missing or amounts cannot be parsed.
     """
     if isinstance(distances_source, (str, Path)):
         file_path = Path(distances_source).expanduser().resolve()
+        if not file_path.exists():
+            raise FileNotFoundError(f"Distances file not found: {file_path}")
         log.info(f"Loading distances from {file_path}")
-        sep = "\t" if file_path.suffix == ".tsv" else ","
+        sep = "\t" if file_path.suffix in [".tsv", ".txt"] else ","
         df = pd.read_csv(file_path, sep=sep)
     else:
         df = distances_source.copy()
@@ -330,81 +171,86 @@ def prepare_distances(
     if missing:
         raise ValueError(f"Missing required columns in distances dataset: {missing}")
 
-    records = []
-    timbres = ["brightness", "richness", "warmth"]
-    sources = ["real", "synthetic"]
+    # Extract timbre and source from wavetable name prefix
+    extracted = df["wavetable"].str.extract(
+        r"^(?P<timbre>brightness|richness|warmth)_(?P<source>real|synthetic)"
+    )
+    if extracted["timbre"].isna().any() or extracted["source"].isna().any():
+        unmatched = df[extracted["timbre"].isna() | extracted["source"].isna()][
+            "wavetable"
+        ].unique()
+        raise ValueError(f"Cannot parse timbre/source from wavetables: {unmatched}")
 
-    for _, row in df.iterrows():
-        wt = str(row["wavetable"])
-        mod = str(row["mod_type"])
+    df["timbre"] = extracted["timbre"]
+    df["source"] = extracted["source"]
+    df["modulation"] = df["mod_type"].astype(str)
+    df["trial_id"] = df["modulation"] + "_" + df["timbre"] + "_" + df["source"]
+    df["mod_timbre"] = df["modulation"] + "_" + df["timbre"]
+    df["amount"] = df["amount"].astype(float)
+    df["distance"] = df["distance"].astype(float)
+    df["loss_fn"] = df["loss_fn"].astype(str)
 
-        # Identify timbre and source from wavetable string prefix
-        timbre, source = None, None
-        for t in timbres:
-            for s in sources:
-                if wt.startswith(f"{t}_{s}"):
-                    timbre, source = t, s
-                    break
-            if timbre is not None:
-                break
+    # Lookup mapping: (mod_type, rounded_amount) -> rating_stimulus
+    lookup_map = {
+        (mod, round(amt, 4)): stim
+        for mod, amt_dict in AMOUNT_TO_STIMULUS.items()
+        for amt, stim in amt_dict.items()
+    }
 
-        if timbre is None or source is None:
-            raise ValueError(f"Cannot parse timbre/source from wavetable name: {wt}")
-
-        trial_id = f"{mod}_{timbre}_{source}"
-        amount = float(row["amount"])
-        is_ref = bool(row.get("is_reference", False))
-
-        if is_ref:
-            stimulus = "reference"
-        else:
-            mod_map = AMOUNT_TO_STIMULUS.get(mod, {})
-            # Match amount with floating point tolerance
-            stimulus = None
-            for ref_val, cond_name in mod_map.items():
-                if abs(amount - ref_val) < 1e-4:
-                    stimulus = cond_name
-                    break
-            if stimulus is None:
-                raise ValueError(
-                    f"Unknown amount {amount} for modulation '{mod}' in {wt}"
-                )
-
-        records.append(
-            {
-                "loss_fn": str(row["loss_fn"]),
-                "trial_id": trial_id,
-                "rating_stimulus": stimulus,
-                "modulation": mod,
-                "timbre": timbre,
-                "source": source,
-                "mod_timbre": f"{mod}_{timbre}",
-                "amount": amount,
-                "is_reference": is_ref or (stimulus == "reference"),
-                "distance": float(row["distance"]),
-            }
+    stimuli = [
+        lookup_map.get((m, round(a, 4))) for m, a in zip(df["modulation"], df["amount"])
+    ]
+    if any(s is None for s in stimuli):
+        unmatched_rows = [
+            (m, a)
+            for m, a, s in zip(df["modulation"], df["amount"], stimuli)
+            if s is None
+        ]
+        raise ValueError(
+            f"Unrecognized modulation amount mapping: {set(unmatched_rows)}"
         )
 
-    parsed_df = pd.DataFrame(records)
+    df["rating_stimulus"] = stimuli
+    df["is_reference"] = df.get("is_reference", False) | (
+        df["rating_stimulus"] == "reference"
+    )
 
     if exclude_reference:
-        parsed_df = parsed_df[~parsed_df["is_reference"]].copy()
+        df = df[~df["is_reference"]].copy()
 
-    return parsed_df
+    columns = [
+        "loss_fn",
+        "trial_id",
+        "rating_stimulus",
+        "modulation",
+        "timbre",
+        "source",
+        "mod_timbre",
+        "amount",
+        "is_reference",
+        "distance",
+    ]
+    return df[columns]
 
 
-def _compute_slice_correlations(
+def compute_slice_correlations(
     human_matrix: pd.DataFrame,
     dist_series: pd.Series,
 ) -> dict[str, float]:
     """Compute group-level and individual-level correlations between distances and human ratings.
 
-    Args:
-        human_matrix: Stimulus x subject rating DataFrame (index: ['trial_id', 'rating_stimulus']).
-        dist_series: Model distances aligned to human_matrix index.
+    Parameters
+    ----------
+    human_matrix : pd.DataFrame
+        Stimulus x subject rating DataFrame (index: ['trial_id', 'rating_stimulus']).
+    dist_series : pd.Series
+        Model distances aligned to human_matrix index.
 
-    Returns:
-        dict containing Pearson, Spearman, and Kendall metrics with p-values and individual distributions.
+    Returns
+    -------
+    dict[str, float]
+        Dictionary containing Pearson, Spearman, and Kendall metrics with p-values
+        and individual participant mean/std distributions.
     """
     n_stimuli, n_subjects = human_matrix.shape
     aligned_dist = dist_series.loc[human_matrix.index]
@@ -479,35 +325,38 @@ def compute_correlations(
     distances_source: Union[str, Path, pd.DataFrame],
     mushra_source: Union[str, Path, pd.DataFrame],
     level: Literal["all", "entire", "modulation", "modulation_timbre"] = "all",
-    loss_fn: Union[str, Sequence[str]] = "all",
     complete_subjects: Literal["slice", "global"] = "slice",
     exclude_reference: bool = True,
-    include_noise_ceiling: bool = False,
     show_progress: bool = True,
     sort_by: Optional[str] = "pearson_group",
-    ascending: bool = False,
 ) -> pd.DataFrame:
     """Compute correlations between audio loss functions and human perceptual ratings.
 
-    Args:
-        distances_source: CSV/TSV path or DataFrame of audio loss distances.
-        mushra_source: TSV/CSV path or DataFrame of preprocessed MUSHRA responses.
-        level: Granularity level ('entire', 'modulation', 'modulation_timbre', or 'all').
-        loss_fn: Specific loss function name(s), sequence of names, JSON/comma list, or 'all'.
-        complete_subjects: 'slice' (complete data for that condition) or 'global' (complete across all 18 trials).
-        exclude_reference: Exclude reference stimulus rating (default: True).
-        include_noise_ceiling: Compute and append noise ceiling benchmark columns from noise_ceiling.py.
-        show_progress: Display tqdm progress bar.
-        sort_by: Column to sort loss functions by within each granularity + condition group (default: 'pearson_group').
-        ascending: Sort in ascending order instead of descending (default: False).
+    Parameters
+    ----------
+    distances_source : Union[str, Path, pd.DataFrame]
+        CSV/TSV path or DataFrame of audio loss distances.
+    mushra_source : Union[str, Path, pd.DataFrame]
+        TSV/CSV path or DataFrame of preprocessed MUSHRA responses.
+    level : Literal["all", "entire", "modulation", "modulation_timbre"], default="all"
+        Granularity level ('entire', 'modulation', 'modulation_timbre', or 'all').
+    complete_subjects : Literal["slice", "global"], default="slice"
+        'slice' (complete data for that condition) or 'global' (complete across all 18 trials).
+    exclude_reference : bool, default=True
+        Exclude reference stimulus rating (default: True).
+    show_progress : bool, default=True
+        Display tqdm progress bar.
+    sort_by : Optional[str], default="pearson_group"
+        Column to sort loss functions by in descending order within each granularity + condition group.
 
-    Returns:
-        pd.DataFrame containing full correlation results.
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing full correlation results across all evaluated losses and conditions.
     """
     df_dist = prepare_distances(distances_source, exclude_reference=exclude_reference)
     df_human = prepare_data(mushra_source, exclude_reference=exclude_reference)
 
-    # Filter by global complete subjects if requested
     if complete_subjects == "global":
         full_pivot = df_human.pivot_table(
             index=["trial_id", "rating_stimulus"],
@@ -520,21 +369,8 @@ def compute_correlations(
             f"Using {len(valid_subjects)} global complete subjects across all analyses."
         )
 
-    # Determine loss functions to evaluate
-    all_available_losses = sorted(df_dist["loss_fn"].unique())
-    parsed_losses = parse_loss_fn_arg(loss_fn)
-    if parsed_losses == ["all"]:
-        selected_losses = all_available_losses
-    else:
-        selected_losses = parsed_losses
+    all_losses = sorted(df_dist["loss_fn"].unique())
 
-    unknown_losses = [l for l in selected_losses if l not in all_available_losses]
-    if unknown_losses:
-        raise ValueError(
-            f"Unknown loss function(s): {unknown_losses}. Available: {all_available_losses}"
-        )
-
-    # Prepare condition slice definitions
     slices: list[tuple[str, str, int, pd.DataFrame]] = []
 
     # 1. Entire dataset (18 trials)
@@ -570,17 +406,8 @@ def compute_correlations(
                 ("modulation_timbre", mt, sub_mt["trial_id"].nunique(), piv_mt)
             )
 
-    # Cache noise ceiling calculations if requested
-    ceilings_cache: dict[tuple[str, str], dict[str, float]] = {}
-    if include_noise_ceiling:
-        log.info("Precomputing noise ceilings across condition slices...")
-        for granularity, cond_name, _, human_matrix in slices:
-            ceilings_cache[(granularity, cond_name)] = _compute_slice_ceilings(
-                human_matrix, n_bootstraps=1000, seed=42
-            )
-
     records = []
-    total_tasks = len(selected_losses) * len(slices)
+    total_tasks = len(all_losses) * len(slices)
     pbar = tqdm(
         total=total_tasks,
         desc="Computing loss correlations",
@@ -588,7 +415,7 @@ def compute_correlations(
         disable=not show_progress,
     )
 
-    for loss_name in selected_losses:
+    for loss_name in all_losses:
         loss_df = df_dist[df_dist["loss_fn"] == loss_name].set_index(
             ["trial_id", "rating_stimulus"]
         )
@@ -596,23 +423,11 @@ def compute_correlations(
         for granularity, condition, n_trials, human_matrix in slices:
             pbar.set_postfix_str(f"{loss_name} | {condition}")
 
-            res = _compute_slice_correlations(human_matrix, loss_df["distance"])
+            res = compute_slice_correlations(human_matrix, loss_df["distance"])
             res["loss_fn"] = loss_name
             res["granularity"] = granularity
             res["condition"] = condition
             res["n_trials"] = n_trials
-
-            if include_noise_ceiling:
-                nc = ceilings_cache.get((granularity, condition), {})
-                res["pearson_nc_lower"] = nc.get("pearson_lower", float("nan"))
-                res["pearson_nc_upper"] = nc.get("pearson_upper", float("nan"))
-                res["pearson_nc_group"] = nc.get("pearson_group", float("nan"))
-                res["spearman_nc_lower"] = nc.get("spearman_lower", float("nan"))
-                res["spearman_nc_upper"] = nc.get("spearman_upper", float("nan"))
-                res["spearman_nc_group"] = nc.get("spearman_group", float("nan"))
-                res["kendall_nc_lower"] = nc.get("kendall_lower", float("nan"))
-                res["kendall_nc_upper"] = nc.get("kendall_upper", float("nan"))
-                res["kendall_nc_group"] = nc.get("kendall_group", float("nan"))
 
             records.append(res)
             pbar.update(1)
@@ -647,7 +462,7 @@ def compute_correlations(
             sub_df = result_df[mask]
             if not sub_df.empty:
                 sub_sorted = sub_df.sort_values(
-                    by=matched_sort_col, ascending=ascending, kind="mergesort"
+                    by=matched_sort_col, ascending=False, kind="mergesort"
                 )
                 sorted_dfs.append(sub_sorted)
         if sorted_dfs:
@@ -656,7 +471,8 @@ def compute_correlations(
     return result_df
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Command-line interface for calculating correlations between audio loss functions and human perceptual ratings."""
     parser = argparse.ArgumentParser(
         description="Compute correlations between audio distance loss functions and MUSHRA listening test responses."
     )
@@ -675,21 +491,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--level",
         choices=["all", "entire", "modulation", "modulation_timbre"],
-        # default="all",
         default="modulation",
-        help="Granularity level to compute (default: all)",
-    )
-    parser.add_argument(
-        "--loss-fn",
-        "--loss-fns",
-        "-l",
-        nargs="+",
-        default=["all"],
-        help=(
-            "Specific loss function(s) to evaluate. Accepts multiple names (e.g. -l jtfs_log1p scat1d_log1p), "
-            "comma-separated string ('jtfs_log1p,scat1d_log1p'), a Python/JSON list representation, "
-            "or 'all' (default: all)."
-        ),
+        help="Granularity level to compute (default: modulation)",
     )
     parser.add_argument(
         "--complete-subjects",
@@ -703,70 +506,53 @@ if __name__ == "__main__":
         help="Include reference stimulus rating in the calculation (default: excluded).",
     )
     parser.add_argument(
-        "--include-noise-ceiling",
-        action="store_true",
-        help="Include human noise ceilings as benchmark columns in the results.",
-    )
-    parser.add_argument(
         "--sort-by",
-        # default="pearson_group",
-        # default="pearson_indiv",
         default="spearman_group",
-        # default="spearman_indiv",
-        # default="kendall_group",
-        # default="kendall_indiv",
-        help="Column to sort loss functions by within each granularity + condition group (default: pearson_group). Set to 'none' to disable sorting.",
-    )
-    parser.add_argument(
-        "--ascending",
-        action="store_true",
-        help="Sort in ascending order instead of descending (default: descending).",
-    )
-    parser.add_argument(
-        "--no-progress",
-        action="store_true",
-        help="Disable the tqdm progress bar.",
+        help="Column to sort loss functions by within each granularity + condition group (default: spearman_group). Set to 'none' to disable sorting.",
     )
     parser.add_argument(
         "-o",
         "--output",
-        default="../out/correlation_results.tsv",
-        help="Optional path to save results as CSV or TSV.",
+        default=os.path.join(OUT_DIR, "audio_distance_correlations.tsv"),
+        help=f"Optional path to save results as CSV or TSV (default: {OUT_DIR}/audio_distance_correlations.tsv).",
     )
     args = parser.parse_args()
 
-    if not os.path.exists(args.distances_path):
-        log.error(f"Distances file not found: {args.distances_path}")
-        sys.exit(1)
-    if not os.path.exists(args.mushra_path):
-        log.error(f"MUSHRA file not found: {args.mushra_path}")
-        sys.exit(1)
+    distances_path = Path(args.distances_path).expanduser().resolve()
+    if not distances_path.exists():
+        raise FileNotFoundError(f"Distances file not found: {distances_path}")
+
+    mushra_path = Path(args.mushra_path).expanduser().resolve()
+    if not mushra_path.exists():
+        raise FileNotFoundError(f"MUSHRA file not found: {mushra_path}")
 
     results_df = compute_correlations(
-        distances_source=args.distances_path,
-        mushra_source=args.mushra_path,
+        distances_source=distances_path,
+        mushra_source=mushra_path,
         level=args.level,
-        loss_fn=args.loss_fn,
         complete_subjects=args.complete_subjects,
         exclude_reference=not args.include_reference,
-        include_noise_ceiling=args.include_noise_ceiling,
-        show_progress=not args.no_progress,
         sort_by=args.sort_by,
-        ascending=args.ascending,
     )
 
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", 1000)
     pd.set_option("display.precision", 3)
 
-    print("\n" + "=" * 120)
-    print("AUDIO DISTANCE CORRELATION WITH HUMAN PERCEPTUAL DATA (DataFrame)")
-    print("=" * 120)
-    print(results_df.to_string(index=False))
-    print("=" * 120 + "\n")
+    sep_bar = "=" * 120
+    log.info("\n" + sep_bar)
+    log.info("AUDIO DISTANCE CORRELATION WITH HUMAN PERCEPTUAL DATA (DataFrame)")
+    log.info(sep_bar)
+    log.info("\n" + results_df.to_string(index=False))
+    log.info(sep_bar + "\n")
 
     if args.output:
         out_path = Path(args.output).expanduser().resolve()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         sep = "\t" if out_path.suffix == ".tsv" else ","
         results_df.to_csv(out_path, sep=sep, index=False)
-        print(f"Results successfully exported to: {out_path}")
+        log.info(f"Results successfully exported to: {out_path}")
+
+
+if __name__ == "__main__":
+    main()
