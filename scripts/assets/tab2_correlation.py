@@ -1,100 +1,117 @@
 """Generate publication-ready compact LaTeX table for audio distance group correlations.
 
-Reads data/correlation_results.tsv and data/noise_ceiling_results.tsv
-and prints a formatted LaTeX table comparing audio distance models across
-amplitude, frequency, and irregularity modulations against human listeners
-and the human noise ceiling benchmark (group correlations only).
+Reads audio distance correlations dataset (out/audio_distance_correlations.tsv)
+and noise ceiling dataset (out/noise_ceilings.tsv), and outputs a formatted LaTeX table
+comparing audio distance loss functions across amplitude, frequency, and irregularity
+modulations against the human noise ceiling benchmark and distance family averages.
 """
 
 from __future__ import annotations
 
 import argparse
-import sys
+import logging
+import os
 from pathlib import Path
+from typing import Any, Optional, Sequence
 
 import pandas as pd
 
-CONDITIONS = ["amp", "freq", "reg"]
+from paths import OUT_DIR
+from util import format_sig_figs
 
-CONDITION_MAP = {
+logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
+log = logging.getLogger(__name__)
+log.setLevel(level=os.environ.get("LOGLEVEL", "INFO"))
+
+__all__ = [
+    "CONDITIONS",
+    "CONDITION_MAP",
+    "TABLE_METHOD_GROUPS",
+    "TABLE_AGGREGATED_GROUPS",
+    "DEFAULT_CAPTION",
+    "DEFAULT_LABEL",
+    "get_asterisks",
+    "assign_highlights",
+    "generate_latex_table",
+    "main",
+]
+
+CONDITIONS: list[str] = ["amp", "freq", "reg"]
+
+CONDITION_MAP: dict[str, str] = {
     "amp": "Amplitude",
     "freq": "Frequency",
     "reg": "Irregularity",
 }
 
-METHOD_GROUPS = [
+TABLE_METHOD_GROUPS: list[list[tuple[str, str]]] = [
     [
         ("mss_log_lin", "MSS Log + Linear"),
         ("mss_rev", "MSS Revisited"),
         ("mfcc", "MFCC"),
     ],
     [
-        ("scat1d_log1p", "Scat1D"),
-        ("jtfs_log1p", "JTFS"),
+        ("scat1d", "Scat1D"),
+        ("jtfs", "JTFS"),
     ],
     [
         ("vggish", "VGGish"),
-        ("encodec48k", "EnCodec 48kHz"),
-        ("clap2", "MS-CLAP"),
+        ("encodec48k", r"EnCodec 48\,kHz"),
+        ("clap", "MS-CLAP"),
         ("panns_wavegram_logmel", "PANNs WGLM"),
     ],
 ]
 
-METHOD_GROUP_NAMES = [
-    "STFT--based",
-    "Wavelet--based",
-    "Neural--based",
+TABLE_AGGREGATED_GROUPS: list[dict[str, Any]] = [
+    {"name": "STFT--based mean", "models": ["mss_log_lin", "mss_rev", "mfcc"]},
+    {"name": "Wavelet--based mean", "models": ["scat1d", "jtfs"]},
+    {
+        "name": "Neural mean",
+        "models": ["vggish", "encodec48k", "clap", "panns_wavegram_logmel"],
+    },
 ]
 
-METHOD_GROUP_TAGS = [
-    r"$^{\;\mathcal{S}}$",
-    r"$^{\;\mathcal{W}}$",
-    r"$^{\;\mathcal{N}}$",
-]
-
-LOSS_FN_ALIASES = {
-    "scat1d": "scat1d_log1p",
-    "jtfs": "jtfs_log1p",
+LOSS_FN_ALIASES: dict[str, str] = {
+    "scat1d_log1p": "scat1d",
+    "jtfs_log1p": "jtfs",
+    "clap2": "clap",
+    "panns_wglm": "panns_wavegram_logmel",
     "encodec": "encodec48k",
     "encodec48": "encodec48k",
     "encodec24k": "encodec48k",
-    "clap": "clap2",
-    "panns_wglm": "panns_wavegram_logmel",
 }
 
+DEFAULT_CAPTION: str = (
+    "Audio distance function correlation coefficients and distance family averages for the human perceptual data. \n"
+    r"Noise ceilings are reported as split-half bootstrapped 95\% confidence intervals." + "\n"
+    r"Highest correlation values are in \textbf{bold}; second highest are \underline{underlined}." + "\n"
+    r"Statistical significance is denoted by asterisks (unstarred: $p \ge 0.05$ or N/A for the last three aggregate rows, $^{*}p < 0.05$, $^{**}p < 0.01$, $^{***}p < 0.001$)."
+)
 
-def format_sig_figs(val: float, precision: int) -> str:
-    """Format a float to a fixed number of significant figures, padding trailing zeros."""
-    if val is None or pd.isna(val):
-        return ""
-    s = f"{val:.{precision}g}"
-    if "e" in s or "E" in s:
-        return f"{val:.{precision}f}"
-    parts = s.split(".")
-    if len(parts) == 1:
-        needed = precision - len(parts[0])
-        return parts[0] + "." + "0" * max(0, needed)
-    sig_digits = (
-        len(parts[1].lstrip("0"))
-        if parts[0] == "0"
-        else len(parts[0].lstrip("0")) + len(parts[1])
-    )
-    needed = precision - sig_digits
-    if needed > 0:
-        s += "0" * needed
-    return s
+DEFAULT_LABEL: str = "tab:correlation"
 
 
 def get_asterisks(p_val: float) -> str:
-    """Return LaTeX significance asterisks based on p-value."""
+    """Return LaTeX significance asterisks based on p-value.
+
+    Parameters
+    ----------
+    p_val : float
+        Two-sided p-value.
+
+    Returns
+    -------
+    str
+        LaTeX formatted asterisk string ($^{*}p < 0.05$, $^{**}p < 0.01$, $^{***}p < 0.001$).
+    """
     if p_val is None or pd.isna(p_val):
         return ""
     if p_val < 0.001:
-        return "$^{***}$"
+        return r"$^{***}$"
     elif p_val < 0.01:
-        return "$^{**}$"
+        return r"$^{**}$"
     elif p_val < 0.05:
-        return "$^{*}$"
+        return r"$^{*}$"
     return ""
 
 
@@ -103,8 +120,15 @@ def assign_highlights(
 ) -> dict[str, str]:
     """Identify top 2 models per metric.
 
-    Returns dict mapping model_key -> formatted string with \\textbf or \\underline.
-    Handles ties in rounded string or raw float values.
+    Parameters
+    ----------
+    model_entries : list[tuple[str, float, str]]
+        List of tuples (model_key, numeric_val, formatted_string_val).
+
+    Returns
+    -------
+    dict[str, str]
+        Dictionary mapping model_key to formatted string with \\textbf or \\underline.
     """
     if not model_entries:
         return {}
@@ -149,63 +173,89 @@ def generate_latex_table(
     df: pd.DataFrame,
     nc_df: pd.DataFrame,
     sig_digits: int = 3,
-    group_means: bool = False,
+    group_means: bool = True,
+    caption: Optional[str] = None,
+    label: str = DEFAULT_LABEL,
+    tabcolsep: str = "7.82pt",
 ) -> str:
-    """Generate the compact LaTeX table string from correlation and noise ceiling dataframes."""
+    """Generate publication-ready compact LaTeX table string from correlation and noise ceiling dataframes.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Audio distance correlation DataFrame.
+    nc_df : pd.DataFrame
+        Noise ceiling results DataFrame.
+    sig_digits : int, default=3
+        Number of significant digits for formatted values.
+    group_means : bool, default=True
+        Whether to include aggregate distance family mean rows.
+    caption : Optional[str], default=None
+        LaTeX table caption text.
+    label : str, default=DEFAULT_LABEL
+        LaTeX cross-reference label.
+    tabcolsep : str, default='7.82pt'
+        LaTeX column separation width.
+
+    Returns
+    -------
+    str
+        Complete LaTeX table string.
+
+    Raises
+    ------
+    ValueError
+        If required condition data is missing from the datasets.
+    """
     df = df.copy()
     if "loss_fn" in df.columns:
         df["canonical_loss"] = df["loss_fn"].map(lambda x: LOSS_FN_ALIASES.get(x, x))
 
-    lines = []
-    lines.append(r"\begin{table*}[t]")
-    lines.append(r"\centering")
-    lines.append(r"\caption{")
-    lines.append(
-        r"Audio distance correlation with human group perceptual dissimilarity across amplitude, "
-        r"frequency, and irregularity modulations. The human noise ceiling acts as the reference upper bound, "
-        r"reported as its 95\% bootstrap confidence interval $[95\%\text{ CI}]$. "
-        r"For loss functions, the highest correlation within each modulation condition is in \textbf{bold}, "
-        r"and the second highest is \underline{underlined}. "
-        r"Statistical significance is denoted by asterisks ($^{*}p < 0.05$, $^{**}p < 0.01$, $^{***}p < 0.001$; "
-        r"unstarred indicates $p \ge 0.05$)."
-    )
-    lines.append(r"}")
-    lines.append(r"\label{tab:audio_distance_group_perceptual_correlation}")
-    lines.append(r"\vspace{3pt}")
-    lines.append(r"\sisetup{")
-    lines.append(r"    round-pad = true,")
-    lines.append(r"    reset-text-series=false, ")
-    lines.append(r"    text-series-to-math=true, ")
-    lines.append(r"    mode=text,")
-    lines.append(r"    tight-spacing=false,")
-    lines.append(r"    separate-uncertainty=false,")
-    lines.append(r"    detect-weight=true,")
-    lines.append(r"    detect-inline-weight=math,")
-    lines.append(r"}")
-    lines.append(r"\setlength{\tabcolsep}{4.5pt}")
-    lines.append(r"\begin{tabular}{")
-    lines.append(r"    l")
+    eff_caption = caption if caption is not None else DEFAULT_CAPTION
+
+    lines: list[str] = [
+        r"\begin{table*}[!t]",
+        r"\centering",
+        r"\vspace{-\abovecaptionskip} % <-- Pulls the caption up flush to the top",
+        r"\caption{",
+        f"{eff_caption}",
+        r"}",
+        f"\\label{{{label}}}",
+        r"\vspace{1pt}",
+        r"\sisetup{",
+        r"    round-pad = true,",
+        r"    reset-text-series=false, ",
+        r"    text-series-to-math=true, ",
+        r"    mode=text,",
+        r"    tight-spacing=false,",
+        r"    separate-uncertainty=false,",
+        r"    detect-weight=true,",
+        r"    detect-inline-weight=math,",
+        r"}",
+        f"\\setlength{{\\tabcolsep}}{{{tabcolsep}}}",
+        r"\begin{tabular}{",
+        r"    l",
+    ]
+
     for _ in range(6):
         lines.append(
             f"    S[round-mode=figures, round-precision={sig_digits}, table-format=1.{sig_digits}, table-number-alignment=right] @{{\\,}} l"
         )
-    lines.append(r"}")
-    lines.append(r"    \toprule")
-    lines.append(r"    \multirow[t]{2}{*}{\textbf{Method}} ")
-    lines.append(r"        & \multicolumn{4}{c}{\textbf{Amplitude}} ")
-    lines.append(r"        & \multicolumn{4}{c}{\textbf{Frequency}} ")
-    lines.append(r"        & \multicolumn{4}{c}{\textbf{Irregularity}} \\")
-    lines.append(r"    \cmidrule(lr){2-5} \cmidrule(lr){6-9} \cmidrule(lr){10-13}")
-    lines.append(
-        r"        & \multicolumn{2}{c}{Spearman ($\rho$) $\uparrow$} & \multicolumn{2}{c}{Pearson ($r$) $\uparrow$} "
+    lines.extend(
+        [
+            r"}",
+            r"    \toprule",
+            r"    \multirow[t]{2}{*}{\textbf{Method}} ",
+            r"        & \multicolumn{4}{c}{\textbf{Amplitude}} ",
+            r"        & \multicolumn{4}{c}{\textbf{Frequency}} ",
+            r"        & \multicolumn{4}{c}{\textbf{Irregularity}} \\",
+            r"    \cmidrule(lr){2-5} \cmidrule(lr){6-9} \cmidrule(lr){10-13}",
+            r"        & \multicolumn{2}{c}{Spearman ($\rho$) $\uparrow$} & \multicolumn{2}{c}{Pearson ($r$) $\uparrow$} ",
+            r"        & \multicolumn{2}{c}{Spearman ($\rho$) $\uparrow$} & \multicolumn{2}{c}{Pearson ($r$) $\uparrow$} ",
+            r"        & \multicolumn{2}{c}{Spearman ($\rho$) $\uparrow$} & \multicolumn{2}{c}{Pearson ($r$) $\uparrow$} \\",
+            r"    \midrule",
+        ]
     )
-    lines.append(
-        r"        & \multicolumn{2}{c}{Spearman ($\rho$) $\uparrow$} & \multicolumn{2}{c}{Pearson ($r$) $\uparrow$} "
-    )
-    lines.append(
-        r"        & \multicolumn{2}{c}{Spearman ($\rho$) $\uparrow$} & \multicolumn{2}{c}{Pearson ($r$) $\uparrow$} \\"
-    )
-    lines.append(r"    \midrule")
 
     # Noise ceiling row across all 3 conditions
     lines.append("    Noise Ceiling ")
@@ -227,23 +277,23 @@ def generate_latex_table(
         pe_ci_high = format_sig_figs(nc_data["pearson_group_ci95_high"], sig_digits)
         pe_ci = f"$[{pe_ci_low}, {pe_ci_high}]$"
 
-        line_term = "\\\\" if cond_idx == len(CONDITIONS) - 1 else ""
+        line_term = r" \\" if cond_idx == len(CONDITIONS) - 1 else ""
         lines.append(
-            f"        & \\multicolumn{{2}}{{c}}{{{sp_ci}}} & \\multicolumn{{2}}{{c}}{{{pe_ci}}} {line_term}"
+            f"        & \\multicolumn{{2}}{{c}}{{{sp_ci}}} & \\multicolumn{{2}}{{c}}{{{pe_ci}}}{line_term}"
         )
 
     lines.append(r"    \midrule")
 
     # Compute highlights for each condition independently
-    hl_by_cond = {}
-    cond_dfs = {}
+    hl_by_cond: dict[str, dict[str, dict[str, str]]] = {}
+    cond_dfs: dict[str, pd.DataFrame] = {}
     for cond in CONDITIONS:
         c_df = df[(df["condition"] == cond) & (df["granularity"] == "modulation")]
         cond_dfs[cond] = c_df
 
         sp_entries = []
         pe_entries = []
-        for group in METHOD_GROUPS:
+        for group in TABLE_METHOD_GROUPS:
             for canon_key, _ in group:
                 match = c_df[c_df["canonical_loss"] == canon_key]
                 if match.empty:
@@ -271,13 +321,11 @@ def generate_latex_table(
         }
 
     # Render each model across the 3 conditions
-    for g_idx, group in enumerate(METHOD_GROUPS):
-        tag = METHOD_GROUP_TAGS[g_idx]
+    for g_idx, group in enumerate(TABLE_METHOD_GROUPS):
         if g_idx > 0:
             lines.append(r"    \addlinespace[5pt]")
         for canon_key, display_name in group:
-            full_display_name = f"{display_name}{tag}"
-            lines.append(f"    {full_display_name:<32s}")
+            lines.append(f"    {display_name:<18s}")
             for cond_idx, cond in enumerate(CONDITIONS):
                 c_df = cond_dfs[cond]
                 match = c_df[c_df["canonical_loss"] == canon_key]
@@ -299,25 +347,25 @@ def generate_latex_table(
                 sp_ast_pad = f"{sp_ast:<15s}" if sp_ast else " " * 15
                 pe_ast_pad = f"{pe_ast:<15s}" if pe_ast else " " * 15
 
-                line_term = "\\\\" if cond_idx == len(CONDITIONS) - 1 else ""
+                line_term = r" \\" if cond_idx == len(CONDITIONS) - 1 else ""
                 lines.append(
                     f"        & {sp_val} & {sp_ast_pad}& {pe_val} & {pe_ast_pad}{line_term}"
                 )
 
-    # Optional 3 extra rows with group means
+    # Optional extra rows with distance family averages
     if group_means:
         lines.append(r"    \midrule")
-        # Compute highlights among the 3 method group means for each condition independently
-        group_means_hl = {}
+        group_means_hl: dict[str, dict[str, dict[str, str]]] = {}
         for cond in CONDITIONS:
             c_df = cond_dfs[cond]
             sp_entries = []
             pe_entries = []
-            for g_idx, group in enumerate(METHOD_GROUPS):
-                g_name = METHOD_GROUP_NAMES[g_idx]
+            for g_info in TABLE_AGGREGATED_GROUPS:
+                g_name = g_info["name"]
+                group_models = g_info["models"]
                 sp_vals = []
                 pe_vals = []
-                for canon_key, _ in group:
+                for canon_key in group_models:
                     match = c_df[c_df["canonical_loss"] == canon_key]
                     if match.empty:
                         match = c_df[c_df["loss_fn"] == canon_key]
@@ -340,56 +388,47 @@ def generate_latex_table(
                 "pe": assign_highlights(pe_entries),
             }
 
-        for g_idx, group_name in enumerate(METHOD_GROUP_NAMES):
-            tag = METHOD_GROUP_TAGS[g_idx]
-            full_group_name = f"{group_name}{tag}"
-            lines.append(f"    {full_group_name:<32s}")
+        for g_info in TABLE_AGGREGATED_GROUPS:
+            g_name = g_info["name"]
+            lines.append(f"    {g_name:<19s}")
             for cond_idx, cond in enumerate(CONDITIONS):
-                sp_str = group_means_hl[cond]["sp"].get(group_name, "")
-                pe_str = group_means_hl[cond]["pe"].get(group_name, "")
+                sp_str = group_means_hl[cond]["sp"].get(g_name, "")
+                pe_str = group_means_hl[cond]["pe"].get(g_name, "")
 
-                line_term = "\\\\" if cond_idx == len(CONDITIONS) - 1 else ""
+                line_term = r" \\" if cond_idx == len(CONDITIONS) - 1 else ""
                 lines.append(
-                    f"        & \\multicolumn{{2}}{{l}}{{{sp_str}}} & \\multicolumn{{2}}{{l}}{{{pe_str}}} {line_term}"
+                    f"        & \\multicolumn{{2}}{{l}}{{{sp_str}}} & \\multicolumn{{2}}{{l}}{{{pe_str}}}{line_term}"
                 )
 
-    lines.append(r"    \bottomrule")
-    lines.append(r"\end{tabular}")
-    lines.append(r"\end{table*}")
+    lines.extend(
+        [
+            r"    \bottomrule",
+            r"\end{tabular}",
+            r"\vspace{-11pt}",
+            r"\end{table*}",
+        ]
+    )
 
     return "\n".join(lines)
 
 
-def resolve_file_path(path_str: str) -> Path:
-    """Resolve file path relative to current working dir, repo root, or script location."""
-    p = Path(path_str).expanduser()
-    if p.exists():
-        return p.resolve()
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    candidate = (repo_root / path_str).resolve()
-    if candidate.exists():
-        return candidate
-    candidate_script = (Path(__file__).resolve().parent / path_str).resolve()
-    if candidate_script.exists():
-        return candidate_script
-    return p.resolve()
-
-
-def main():
+def main() -> None:
+    """Parse command line arguments and print publication-ready LaTeX table."""
     parser = argparse.ArgumentParser(
-        description="Print compact LaTeX group correlation table to terminal."
+        description="Print publication-ready compact LaTeX table of audio distance group correlations."
     )
     parser.add_argument(
         "input",
         nargs="?",
-        default="data/correlation_results.tsv",
-        help="Path to correlation_results.tsv (default: data/correlation_results.tsv)",
+        default=os.path.join(OUT_DIR, "audio_distance_correlations.tsv"),
+        help=f"Path to correlation results TSV dataset (default: {OUT_DIR}/audio_distance_correlations.tsv)",
     )
     parser.add_argument(
         "-nc",
         "--noise-ceiling",
-        default="data/noise_ceiling_results.tsv",
-        help="Path to noise_ceiling_results.tsv (default: data/noise_ceiling_results.tsv)",
+        default=os.path.join(OUT_DIR, "noise_ceilings.tsv"),
+        dest="noise_ceiling",
+        help=f"Path to noise ceilings TSV dataset (default: {OUT_DIR}/noise_ceilings.tsv)",
     )
     parser.add_argument(
         "--sig-digits",
@@ -405,7 +444,7 @@ def main():
         action="store_true",
         default=True,
         dest="group_means",
-        help="Display 3 extra rows with the mean for each method group (STFT-based, Wavelet-based, and Neural-based) at the bottom of the table after a midbar.",
+        help="Display 3 extra rows with the mean for each method group (STFT-based, Wavelet-based, and Neural-based) at the bottom of the table.",
     )
     parser.add_argument(
         "-o",
@@ -421,17 +460,13 @@ def main():
     )
     args = parser.parse_args()
 
-    input_path = resolve_file_path(args.input)
+    input_path = Path(args.input).expanduser().resolve()
     if not input_path.exists():
-        sys.stderr.write(
-            f"Error: Correlation results file not found at: {input_path}\n"
-        )
-        sys.exit(1)
+        raise FileNotFoundError(f"Correlation results file not found at: {input_path}")
 
-    nc_path = resolve_file_path(args.noise_ceiling)
+    nc_path = Path(args.noise_ceiling).expanduser().resolve()
     if not nc_path.exists():
-        sys.stderr.write(f"Error: Noise ceiling results file not found at: {nc_path}\n")
-        sys.exit(1)
+        raise FileNotFoundError(f"Noise ceiling results file not found at: {nc_path}")
 
     sep_in = "\t" if input_path.suffix in [".tsv", ".txt"] else ","
     df = pd.read_csv(input_path, sep=sep_in)
@@ -453,7 +488,7 @@ def main():
         out_path = Path(args.output).expanduser().resolve()
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(table_latex, encoding="utf-8")
-        sys.stderr.write(f"Table successfully written to: {out_path}\n")
+        log.info(f"Table successfully written to: {out_path}")
 
 
 if __name__ == "__main__":
