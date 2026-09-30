@@ -9,7 +9,7 @@
 </p>
 
 [![Paper](https://img.shields.io/badge/%F0%9F%93%84-Paper-blue)](https://christhetree.github.io/mod_perception/)
-[![Listening Samples](https://img.shields.io/badge/%F0%9F%94%8A%F0%9F%8E%B6-Listening_Samples-blue)](https://christhetree.github.io/mod_perception/#stimuli-listening-samples)
+[![Audio Stimuli](https://img.shields.io/badge/%F0%9F%94%8A%F0%9F%8E%B6-Audio_Stimuli-blue)](https://christhetree.github.io/mod_perception/#stimuli-listening-samples)
 [![Listening Test Data](https://img.shields.io/badge/Data-Listening_Test-blue)](https://christhetree.github.io/mod_perception/#downloads)
 [![License](https://img.shields.io/badge/License-MIT-blue)](https://opensource.org/licenses/MIT)
 </div>
@@ -89,5 +89,5 @@ We make our code, audio samples, and listening test data available.
 <p>
 AI coding assistants (Gemini Flash 3.7 and 3.8) were used during the development of the research codebase and for generating figures and tables. 
 All AI-generated code was subject to human verification to ensure correctness. 
-The paper was fully written by the authors and then edited with the aid of an LLM to improve conciseness.
+The paper was written entirely by the authors and then edited with the aid of an LLM to improve conciseness.
 </p>
