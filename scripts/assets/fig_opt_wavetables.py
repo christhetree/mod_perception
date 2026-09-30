@@ -252,8 +252,8 @@ def main() -> None:
     parser.add_argument(
         "-o",
         "--output",
-        default=os.path.join(OUT_DIR, "figures", "wavetables.pdf"),
-        help=f"Path to save figure (default: {OUT_DIR}/figures/wavetables.pdf). Supports .pdf, .png, .svg, etc.",
+        default=os.path.join(OUT_DIR, "figures", "wavetables.svg"),
+        help=f"Path to save figure (default: {OUT_DIR}/figures/wavetables.svg). Supports .pdf, .png, .svg, etc.",
     )
     parser.add_argument(
         "--sr",

@@ -557,8 +557,9 @@ def main() -> None:
     parser.add_argument(
         "-o",
         "--output",
-        default=os.path.join(OUT_DIR, "figures", "figure_variance.pdf"),
-        help=f"Path to save figure image (default: {OUT_DIR}/figures/figure_variance.pdf). Supports .png, .pdf, .svg.",
+        # default=os.path.join(OUT_DIR, "figures", "fig3_variance_decomposition_pooled.pdf"),
+        default=os.path.join(OUT_DIR, "figures", "fig3_variance_decomposition.pdf"),
+        help=f"Path to save figure image (default: {OUT_DIR}/figures/fig3_variance_decomposition.pdf). Supports .png, .pdf, .svg.",
     )
     parser.add_argument(
         "--no-labels",

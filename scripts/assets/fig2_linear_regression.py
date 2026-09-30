@@ -1042,13 +1042,6 @@ def main() -> None:
         help="Draw dashed horizontal separator lines between representation groups (default: False).",
     )
     parser.add_argument(
-        "--no-separators",
-        "--no-separator",
-        action="store_false",
-        dest="group_separators",
-        help="Disable dashed horizontal separator lines.",
-    )
-    parser.add_argument(
         "--ci-level",
         type=float,
         default=0.95,

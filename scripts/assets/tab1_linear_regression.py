@@ -350,13 +350,6 @@ def main() -> None:
         help="Anchor linear fit to pass through y=0 at first x value (default: True).",
     )
     parser.add_argument(
-        "--no-anchor-zero",
-        "--no-anchor",
-        action="store_false",
-        dest="anchor_zero",
-        help="Compute standard unconstrained linear fit R^2 = (Pearson's r)^2.",
-    )
-    parser.add_argument(
         "--sig-digits",
         "--precision",
         type=int,

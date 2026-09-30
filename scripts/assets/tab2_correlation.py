@@ -23,19 +23,6 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 log.setLevel(level=os.environ.get("LOGLEVEL", "INFO"))
 
-__all__ = [
-    "CONDITIONS",
-    "CONDITION_MAP",
-    "TABLE_METHOD_GROUPS",
-    "TABLE_AGGREGATED_GROUPS",
-    "DEFAULT_CAPTION",
-    "DEFAULT_LABEL",
-    "get_asterisks",
-    "assign_highlights",
-    "generate_latex_table",
-    "main",
-]
-
 CONDITIONS: list[str] = ["amp", "freq", "reg"]
 
 CONDITION_MAP: dict[str, str] = {
@@ -446,18 +433,6 @@ def main() -> None:
         dest="group_means",
         help="Display 3 extra rows with the mean for each method group (STFT-based, Wavelet-based, and Neural-based) at the bottom of the table.",
     )
-    parser.add_argument(
-        "-o",
-        "--output",
-        default=None,
-        help="Optional path to save generated LaTeX table to a .tex file.",
-    )
-    parser.add_argument(
-        "-q",
-        "--quiet",
-        action="store_true",
-        help="Suppress printing to terminal (useful when exporting only to file).",
-    )
     args = parser.parse_args()
 
     input_path = Path(args.input).expanduser().resolve()
@@ -481,14 +456,7 @@ def main() -> None:
         group_means=args.group_means,
     )
 
-    if not args.quiet:
-        print(table_latex)
-
-    if args.output:
-        out_path = Path(args.output).expanduser().resolve()
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(table_latex, encoding="utf-8")
-        log.info(f"Table successfully written to: {out_path}")
+    print(table_latex)
 
 
 if __name__ == "__main__":
