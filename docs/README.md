@@ -1,1 +1,1 @@
-Website for "SCRAPL: Scattering Transform with Random Paths for Machine Learning".
+Website for "Do Audio Distance Functions Hear Timbre Modulation? A Machine Listening Study".
